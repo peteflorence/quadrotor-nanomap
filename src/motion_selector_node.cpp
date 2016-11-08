@@ -499,10 +499,9 @@ private:
 		Vector3 velocity_world_frame(twist.twist.linear.x, twist.twist.linear.y, twist.twist.linear.z);
 		Vector3 velocity_ortho_body_frame = TransformWorldToOrthoBody(velocity_world_frame);
 		velocity_ortho_body_frame(2) = 0.0;  // WARNING for 2D only
-		
 		mutex.lock();
 		UpdateMotionLibraryVelocity(velocity_ortho_body_frame);
-		double speed = velocity_ortho_body_frame.norm();
+		speed = velocity_ortho_body_frame.norm();
 		//UpdateTimeHorizon(speed);
 		UpdateMaxAcceleration(speed);
 		mutex.unlock();
@@ -604,11 +603,36 @@ private:
 		UpdateValueGrid(value_grid_msg);
 	}
 
+	// Hack function to add motion up/down in order to help state estimator
+	// dolphin_altitude(t) = A * cos(t * 2pi/T) + flight_altitude
+	// A = amplitude
+	// T = period
+	double DolphinStrokeDetermineAltitude(double speed) {
+		
+		// Do not dolphin stroke if not near top speed
+		if (speed < soft_top_speed_max * 0.9) {
+			time_of_start_dolphin_stroke = ros::Time::now().toSec();
+			return flight_altitude;
+		} 
+
+		double A = 0.5; // 0.5 meter amplitude
+		double T = 3.0;   // 3 seond period
+
+		double t = ros::Time::now().toSec() - time_of_start_dolphin_stroke;
+
+		return A * cos(t * 2 * M_PI / T) + flight_altitude;
+	}
+
 
 	void OnLocalGoal(geometry_msgs::PoseStamped const& local_goal) {
 		//ROS_INFO("GOT LOCAL GOAL");
 		mutex.lock();
-		carrot_world_frame << local_goal.pose.position.x, local_goal.pose.position.y, flight_altitude; 
+		double dolphin_altitude = DolphinStrokeDetermineAltitude(speed);
+		carrot_world_frame << local_goal.pose.position.x, local_goal.pose.position.y, dolphin_altitude; 
+		if (!use_3d_library) {
+			attitude_generator.setZsetpoint(dolphin_altitude);
+		}
+
 		UpdateCarrotOrthoBodyFrame();
 		mutex.unlock();
 
@@ -815,12 +839,17 @@ private:
 	bool use_3d_library = false;
 	double flight_altitude;
 
+
 	bool executing_e_stop = false;
 	double begin_e_stop_time = 0.0;
 	double e_stop_time_needed = 0.0;
 	double max_e_stop_pitch_degrees = 60.0;
 
 	double laser_z_below_project_up = -0.5;
+
+	double time_of_start_dolphin_stroke;
+	double speed = 0;
+
 
 	ros::NodeHandle nh;
 
