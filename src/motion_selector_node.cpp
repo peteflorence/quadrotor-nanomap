@@ -610,7 +610,7 @@ private:
 	double DolphinStrokeDetermineAltitude(double speed) {
 		
 		// Do not dolphin stroke if not near top speed
-		if (speed < soft_top_speed_max * 0.9) {
+		if (speed < soft_top_speed_max * 0.1) {
 			time_of_start_dolphin_stroke = ros::Time::now().toSec();
 			return flight_altitude;
 		} 
