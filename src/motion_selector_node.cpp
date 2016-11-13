@@ -363,8 +363,8 @@ private:
 	void UpdateLaserRDFFramesFromPose() {
 		transformAccelerationsIntoLaserRDFFrames();
 		MotionLibrary* motion_library_ptr = motion_selector.GetMotionLibraryPtr();
-		Vector3 initial_acceleration = motion_library_ptr->getInitialAcceleration();
     	if (motion_library_ptr != nullptr) {
+    		Vector3 initial_acceleration = motion_library_ptr->getInitialAcceleration();
 			motion_library_ptr->setInitialAccelerationLASER(transformOrthoBodyIntoLaserFrame(initial_acceleration));
 			motion_library_ptr->setInitialAccelerationRDF(transformOrthoBodyIntoRDFFrame(initial_acceleration));
 		}
