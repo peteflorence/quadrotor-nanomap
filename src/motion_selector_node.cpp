@@ -64,6 +64,17 @@ public:
 
 		motion_visualizer.initialize(&motion_selector, nh, &best_traj_index, final_time);
 		tf_listener_ = std::make_shared<tf2_ros::TransformListener>(tf_buffer_);
+	    for(;;){
+		    try {
+
+		      tf_buffer_.lookupTransform("world", "body", 
+		                                    ros::Time(0), ros::Duration(30.0));
+		    } catch (tf2::TransformException &ex) {
+		      continue;
+		    }
+
+		    break;
+		}
 		srand ( time(NULL) ); //initialize the random seed
 
 		ROS_INFO("Finished constructing the motion selector node");
@@ -85,6 +96,8 @@ public:
                 //attitude_setpoint_visualization_pub = nh.advertise<geometry_msgs::PoseStamped>("attitude_setpoint", 1);
                 status_pub = nh.advertise<fla_msgs::ProcessStatus>("/globalstatus", 0);
 
+
+
 	}
 
 	void SetThrustForLibrary(double thrust) {
@@ -101,7 +114,7 @@ public:
 	      tf = tf_buffer_.lookupTransform("world", "ortho_body", 
 	                                    ros::Time(0), ros::Duration(1.0/30.0));
 	    } catch (tf2::TransformException &ex) {
-	      ROS_ERROR("%s", ex.what());
+	      ROS_ERROR("ID 1 %s", ex.what());
 	      return tf;
 	    }
 	    return tf;
@@ -349,7 +362,7 @@ private:
 	      tf = tf_buffer_.lookupTransform("ortho_body", "world", 
 	                                    ros::Time(0), ros::Duration(1.0/30.0));
 	    } catch (tf2::TransformException &ex) {
-	      ROS_ERROR("%s", ex.what());
+	      ROS_ERROR("ID 2 %s", ex.what());
 	      return;
 	    }
 
@@ -443,7 +456,7 @@ private:
      		tf = tf_buffer_.lookupTransform("laser", "ortho_body", 
                                     ros::Time(0), ros::Duration(1/30.0));
    		} catch (tf2::TransformException &ex) {
-     	 	ROS_ERROR("%s", ex.what());
+     	 	ROS_ERROR("ID 3 %s", ex.what());
       	return Vector3(0,0,0);
     	}
     	geometry_msgs::PoseStamped pose_ortho_body_vector = PoseFromVector3(ortho_body_vector, "ortho_body");
@@ -458,7 +471,7 @@ private:
      		tf = tf_buffer_.lookupTransform("r200_depth_optical_frame", "ortho_body", 
                                     ros::Time(0), ros::Duration(1/30.0));
    		} catch (tf2::TransformException &ex) {
-     	 	ROS_ERROR("%s", ex.what());
+     	 	ROS_ERROR("ID 4 %s", ex.what());
       	return Vector3(0,0,0);
     	}
     	geometry_msgs::PoseStamped pose_ortho_body_vector = PoseFromVector3(ortho_body_vector, "ortho_body");
@@ -473,7 +486,7 @@ private:
      		tf = tf_buffer_.lookupTransform("r200_depth_optical_frame", "ortho_body", 
                                     ros::Time(0), ros::Duration(1/30.0));
    		} catch (tf2::TransformException &ex) {
-     	 	ROS_ERROR("%s", ex.what());
+     	 	ROS_ERROR("ID 5 %s", ex.what());
       	return Matrix3();
     	}
     	Eigen::Quaternion<Scalar> quat(tf.transform.rotation.w, tf.transform.rotation.x, tf.transform.rotation.y, tf.transform.rotation.z);
@@ -487,8 +500,8 @@ private:
 	      tf = tf_buffer_.lookupTransform("ortho_body", "world", 
 	                                    ros::Time(0), ros::Duration(1/30.0));
 	    } catch (tf2::TransformException &ex) {
-	      ROS_ERROR("%s", ex.what());
-	      return Vector3::Zero();
+	      ROS_ERROR("ID 6 %s", ex.what());
+	      return Vector3(1,1,1);
 	    }
 
 	    Eigen::Quaternion<Scalar> quat(tf.transform.rotation.w, tf.transform.rotation.x, tf.transform.rotation.y, tf.transform.rotation.z);
@@ -544,7 +557,7 @@ private:
 	      tf = tf_buffer_.lookupTransform("world", "ortho_body",
 	                                    ros::Time(0), ros::Duration(1/30.0));
 	    } catch (tf2::TransformException &ex) {
-	      ROS_ERROR("%s", ex.what());
+	      ROS_ERROR("ID 7 %s", ex.what());
 	      return Vector3::Zero();
 	    }
 
@@ -678,7 +691,7 @@ private:
 	     	tf = tf_buffer_.lookupTransform("ortho_body", source_frame,
 	                                    ros::Time(0), ros::Duration(1/30.0));
 	   		} catch (tf2::TransformException &ex) {
-	     	 	ROS_ERROR("%s", ex.what());
+	     	 	ROS_ERROR("8 %s", ex.what());
       	return;
     	}
 
@@ -833,7 +846,7 @@ private:
 	std::mutex mutex;
 
 	Vector3 carrot_world_frame;
-	Vector3 carrot_ortho_body_frame;
+	Vector3 carrot_ortho_body_frame = Vector3(0,0,0);
 
 	size_t best_traj_index = 0;
 	Vector3 desired_acceleration;
