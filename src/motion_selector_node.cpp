@@ -7,6 +7,7 @@
 #include <mavros_msgs/AttitudeTarget.h>
 #include <nav_msgs/OccupancyGrid.h>
 #include <sensor_msgs/PointCloud2.h>
+#include "fla_msgs/ProcessStatus.h"
 
 #include "tf/tf.h"
 #include <tf/transform_listener.h>
@@ -52,6 +53,7 @@ public:
 		gaussian_pub = nh.advertise<visualization_msgs::Marker>( "gaussian_visualization", 0 );
 		attitude_thrust_pub = nh.advertise<mavros_msgs::AttitudeTarget>("/mux_input_1", 1);
 		//attitude_setpoint_visualization_pub = nh.advertise<geometry_msgs::PoseStamped>("attitude_setpoint", 1);
+		status_pub = nh.advertise<fla_msgs::ProcessStatus>("/globalstatus", 0);
 
 		// Initialization
 		double acceleration_interpolation_min;
@@ -150,7 +152,7 @@ public:
 				Vector3 end_jerk_velocity_ortho_body = motion_library_ptr->getMotionFromIndex(best_traj_index).getVelocity(0.2);
 
 				e_stop_time_needed = end_jerk_velocity_ortho_body.norm() / e_stop_acceleration_magnitude / 0.85;
-				std::cout << "E STOP TIME NEEDED " << e_stop_time_needed << std::endl;
+				ROS_WARN_THROTTLE(1.0, "E-STOPPING");
 			}
 		}
 		executing_e_stop = true;
@@ -161,7 +163,7 @@ public:
 
 		// Check if time to exit open loop e stop
 		double e_stop_time_elapsed = ros::Time::now().toSec() - begin_e_stop_time;
-		std::cout << "E STOP TIME ELAPSED " << e_stop_time_elapsed << std::endl;
+		//std::cout << "E STOP TIME ELAPSED " << e_stop_time_elapsed << std::endl;
 		if (e_stop_time_elapsed > e_stop_time_needed) {
 			executing_e_stop = false;
 		}
@@ -392,6 +394,14 @@ private:
 		mutex.lock();
 		SetPose(pose.pose.position.x, pose.pose.position.y, pose.pose.position.z, yaw);
 		mutex.unlock();
+
+		// Punlish WE ARE ALIVE
+		fla_msgs::ProcessStatus msg;
+		msg.id = 21; // 21 is motion_primitives status_id
+		msg.pid = getpid();
+		msg.status = fla_msgs::ProcessStatus::READY;
+		msg.arg = 0;
+		status_pub.publish(msg);
 	}
 
 	void SetPose(double x, double y, double z, double yaw) {
@@ -799,6 +809,7 @@ private:
 	ros::Publisher gaussian_pub;
 	ros::Publisher attitude_thrust_pub;
 	ros::Publisher attitude_setpoint_visualization_pub;
+	ros::Publisher status_pub;
 
 	std::vector<ros::Publisher> action_paths_pubs;
 	tf::TransformListener listener;
@@ -850,6 +861,9 @@ private:
 	double time_of_start_dolphin_stroke;
 	double speed = 0;
 
+	enum StatusArg {
+			NOMINAL = 0
+	};
 
 	ros::NodeHandle nh;
 
