@@ -38,22 +38,6 @@ public:
 
 	MotionSelectorNode() {
 
-		// Subscribers
-
-		pose_sub = nh.subscribe("/pose", 1, &MotionSelectorNode::OnPose, this);
-		velocity_sub = nh.subscribe("/twist", 1, &MotionSelectorNode::OnVelocity, this);
-  	    depth_image_sub = nh.subscribe("/flight/r200/points_xyz", 1, &MotionSelectorNode::OnDepthImage, this);
-  	    local_goal_sub = nh.subscribe("/local_goal", 1, &MotionSelectorNode::OnLocalGoal, this);
-  	    //value_grid_sub = nh.subscribe("/value_grid", 1, &MotionSelectorNode::OnValueGrid, this);
-  	    laser_scan_sub = nh.subscribe("/laserscan_to_pointcloud/cloud2_out", 1, &MotionSelectorNode::OnScan, this);
-
-
-  	    // Publishers
-  	    carrot_pub = nh.advertise<visualization_msgs::Marker>( "carrot_marker", 0 );
-		gaussian_pub = nh.advertise<visualization_msgs::Marker>( "gaussian_visualization", 0 );
-		attitude_thrust_pub = nh.advertise<mavros_msgs::AttitudeTarget>("/mux_input_1", 1);
-		//attitude_setpoint_visualization_pub = nh.advertise<geometry_msgs::PoseStamped>("attitude_setpoint", 1);
-		status_pub = nh.advertise<fla_msgs::ProcessStatus>("/globalstatus", 0);
 
 		// Initialization
 		double acceleration_interpolation_min;
@@ -83,6 +67,24 @@ public:
 		srand ( time(NULL) ); //initialize the random seed
 
 		ROS_INFO("Finished constructing the motion selector node");
+
+                // Subscribers
+
+                pose_sub = nh.subscribe("/pose", 1, &MotionSelectorNode::OnPose, this);
+                velocity_sub = nh.subscribe("/twist", 1, &MotionSelectorNode::OnVelocity, this);
+                depth_image_sub = nh.subscribe("/flight/r200/points_xyz", 1, &MotionSelectorNode::OnDepthImage, this);
+                local_goal_sub = nh.subscribe("/local_goal", 1, &MotionSelectorNode::OnLocalGoal, this);
+                //value_grid_sub = nh.subscribe("/value_grid", 1, &MotionSelectorNode::OnValueGrid, this);
+                laser_scan_sub = nh.subscribe("/laserscan_to_pointcloud/cloud2_out", 1, &MotionSelectorNode::OnScan, this);
+
+
+                // Publishers
+                carrot_pub = nh.advertise<visualization_msgs::Marker>( "carrot_marker", 0 );
+                gaussian_pub = nh.advertise<visualization_msgs::Marker>( "gaussian_visualization", 0 );
+                attitude_thrust_pub = nh.advertise<mavros_msgs::AttitudeTarget>("/mux_input_1", 1);
+                //attitude_setpoint_visualization_pub = nh.advertise<geometry_msgs::PoseStamped>("attitude_setpoint", 1);
+                status_pub = nh.advertise<fla_msgs::ProcessStatus>("/globalstatus", 0);
+
 	}
 
 	void SetThrustForLibrary(double thrust) {
