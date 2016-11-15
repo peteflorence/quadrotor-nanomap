@@ -14,6 +14,9 @@
   <arg name="max_e_stop_pitch_degrees" default="80.0"/>
   <arg name="laser_z_below_project_up" default="-1.5"/>
 
+  <arg name="A_dolphin" default="0.5"/>
+  <arg name="T_dolphin" default="3.0"/>
+
   <param name="soft_top_speed" type="double" value="$(arg soft_top_speed)"/>
 	<param name="acceleration_interpolation_min" type="double" value="$(arg acceleration_interpolation_min)"/>
   <param name="acceleration_interpolation_max" type="double" value="$(arg acceleration_interpolation_max)"/>
@@ -24,6 +27,8 @@
   <param name="use_3d_library" type="bool" value="$(arg use_3d_library)"/>
   <param name="max_e_stop_pitch_degrees" type="double" value="$(arg max_e_stop_pitch_degrees)"/>
   <param name="laser_z_below_project_up" type="double" value="$(arg laser_z_below_project_up)"/>
+  <param name="A_dolphin" type="double" value="$arg A_dolphin)"/>
+  <param name="T_dolphin" type="double" value="$arg T_dolphin)"/>
 
   <node pkg="motion_primitives" type="motion_selector_node" name="motion_selector" output="screen">
     <remap from="/local_goal" to="/move_base_simple/goal" unless="$(arg use_global_planner)"/>

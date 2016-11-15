@@ -55,6 +55,8 @@ public:
         nh.param("use_3d_library", use_3d_library, false);
         nh.param("max_e_stop_pitch_degrees", max_e_stop_pitch_degrees, 60.0);
         nh.param("laser_z_below_project_up", laser_z_below_project_up, -0.5);
+        nh.param("A_dolphin", A_dolphin, 0.5);
+        nh.param("T_dolphin", T_dolphin, 3.0);
 
 		this->soft_top_speed_max = soft_top_speed;
 
@@ -632,6 +634,8 @@ private:
 	// dolphin_altitude(t) = A * cos(t * 2pi/T) + flight_altitude
 	// A = amplitude
 	// T = period
+        double A_dolphin = 0.5;
+        double T_dolphin = 3.0;
 	double DolphinStrokeDetermineAltitude(double speed) {
 		
 		// Do not dolphin stroke if not near top speed
@@ -640,12 +644,9 @@ private:
 			return flight_altitude;
 		} 
 
-		double A = 0.25; // amplitude
-		double T = 3.0;   // period
-
 		double t = ros::Time::now().toSec() - time_of_start_dolphin_stroke;
 
-		return A * cos(t * 2 * M_PI / T) + flight_altitude;
+		return A_dolphin * cos(t * 2 * M_PI / T_dolphin) + flight_altitude;
 	}
 
 
