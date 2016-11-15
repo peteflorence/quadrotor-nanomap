@@ -12,7 +12,7 @@
   <arg name="use_3d_library" default="false"/>
 
   <arg name="max_e_stop_pitch_degrees" default="80.0"/>
-  <arg name="laser_z_below_project_up" default="-1.0"/>
+  <arg name="laser_z_below_project_up" default="-1.5"/>
 
   <param name="soft_top_speed" type="double" value="$(arg soft_top_speed)"/>
 	<param name="acceleration_interpolation_min" type="double" value="$(arg acceleration_interpolation_min)"/>
