@@ -640,8 +640,8 @@ private:
 			return flight_altitude;
 		} 
 
-		double A = 0.5; // 0.5 meter amplitude
-		double T = 3.0;   // 3 seond period
+		double A = 0.25; // amplitude
+		double T = 3.0;   // period
 
 		double t = ros::Time::now().toSec() - time_of_start_dolphin_stroke;
 
