@@ -8,13 +8,13 @@
   <arg name="speed_at_acceleration_max" default="10.0"/>
   <arg name="yaw_on" default="true"/>
   <arg name="use_depth_image" default="true"/>
-  <arg name="flight_altitude" default="3.0"/>
+  <arg name="flight_altitude" default="2.0"/>
   <arg name="use_3d_library" default="false"/>
 
   <arg name="max_e_stop_pitch_degrees" default="80.0"/>
-  <arg name="laser_z_below_project_up" default="-1.5"/>
+  <arg name="laser_z_below_project_up" default="-1.0"/>
 
-  <arg name="A_dolphin" default="0.5"/>
+  <arg name="A_dolphin" default="0.25"/>
   <arg name="T_dolphin" default="3.0"/>
 
   <param name="soft_top_speed" type="double" value="$(arg soft_top_speed)"/>
