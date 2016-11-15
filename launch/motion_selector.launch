@@ -27,8 +27,8 @@
   <param name="use_3d_library" type="bool" value="$(arg use_3d_library)"/>
   <param name="max_e_stop_pitch_degrees" type="double" value="$(arg max_e_stop_pitch_degrees)"/>
   <param name="laser_z_below_project_up" type="double" value="$(arg laser_z_below_project_up)"/>
-  <param name="A_dolphin" type="double" value="$arg A_dolphin)"/>
-  <param name="T_dolphin" type="double" value="$arg T_dolphin)"/>
+  <param name="A_dolphin" type="double" value="$(arg A_dolphin)"/>
+  <param name="T_dolphin" type="double" value="$(arg T_dolphin)"/>
 
   <node pkg="motion_primitives" type="motion_selector_node" name="motion_selector" output="screen">
     <remap from="/local_goal" to="/move_base_simple/goal" unless="$(arg use_global_planner)"/>
