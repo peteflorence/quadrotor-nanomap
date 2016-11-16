@@ -636,17 +636,28 @@ private:
 	// T = period
         double A_dolphin = 0.5;
         double T_dolphin = 3.0;
+        double dolphin_acceleration_threshold = 1.0;
+
+        double dolphin_wave_time = 0;
+        double time_of_last_dolphin_query = 0;
+        bool dolphin_initialized = false;
+
 	double DolphinStrokeDetermineAltitude(double speed) {
-		
-		// Do not dolphin stroke if not near top speed
-		if (speed < soft_top_speed_max * 0.1) {
-			time_of_start_dolphin_stroke = ros::Time::now().toSec();
+		if (!dolphin_initialized) {
+			dolphin_initialized = true;
+			time_of_last_dolphin_query = ros::Time::now().toSec();
 			return flight_altitude;
-		} 
+		}
 
-		double t = ros::Time::now().toSec() - time_of_start_dolphin_stroke;
+		double time_now = ros::Time::now().toSec();
+		double t_increment = time_now = time_of_last_dolphin_query;
+		double time_of_last_dolphin_query = time_now;
 
-		return A_dolphin * cos(t * 2 * M_PI / T_dolphin) + flight_altitude;
+		if (desired_acceleration.norm() < dolphin_acceleration_threshold) {
+			dolphin_wave_time += t_increment;
+		}
+
+		return A_dolphin * cos(dolphin_wave_time * 2 * M_PI / T_dolphin) + flight_altitude;
 	}
 
 
@@ -874,7 +885,6 @@ private:
 
 	double laser_z_below_project_up = -0.5;
 
-	double time_of_start_dolphin_stroke;
 	double speed = 0;
 
 	enum StatusArg {
