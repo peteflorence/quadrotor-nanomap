@@ -29,7 +29,7 @@ private:
 
   double _dt = 1/100.0;
   double _max = 0.9;
-  double _min = 0.3;
+  double _min = 0.4;
   double _Kp = 0.6;
   double _Ki = 0.6;
   double _Kd = 0.5;
