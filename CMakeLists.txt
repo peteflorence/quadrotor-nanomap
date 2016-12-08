@@ -56,6 +56,3 @@ add_library( motion_selector src/motion_selector.cpp src/motion_library.cpp src/
 add_executable( motion_selector_node src/motion_selector_node.cpp )
 target_link_libraries( motion_selector_node motion_selector ${catkin_LIBRARIES} ${PCL_LIBRARIES} orocos-kdl)
 
-add_executable( state_estimate_corruptor_node src/experimental/state_estimate_corruptor_node.cpp )
-target_link_libraries( state_estimate_corruptor_node  ${catkin_LIBRARIES})
-
