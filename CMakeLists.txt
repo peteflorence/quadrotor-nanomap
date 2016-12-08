@@ -27,7 +27,7 @@ add_message_files( DIRECTORY msg FILES Coeff.msg State.msg )
 generate_messages( DEPENDENCIES std_msgs nav_msgs)
 
 find_package( Eigen3 REQUIRED )
-find_package(OpenCV 2.4.8 REQUIRED)
+find_package(OpenCV REQUIRED)
 find_package(PCL REQUIRED)
 
 include_directories ( src )
@@ -42,6 +42,8 @@ catkin_package(
 include_directories(
   ${catkin_INCLUDE_DIRS}
 )
+
+add_definitions("-std=c++11")
 
 find_package(orocos_kdl REQUIRED)
 find_library(OROCOS_KDL orocos-kdl)
