@@ -1,9 +1,0 @@
-<launch>
-
-	<arg name="noise_scaling" default="0.00"/>
-
-	<param name="noise_scaling" type="double" value="$(arg noise_scaling)"/>
-    <node pkg="motion_selector" type="state_estimate_corruptor_node" name="state_estimate_corruptor" output="screen">
-    </node>
-   
-</launch>
