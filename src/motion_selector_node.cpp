@@ -77,6 +77,8 @@ public:
 
 		    break;
 		}
+		PublishOrthoBodyTransform(0.0, 0.0); 
+
 		srand ( time(NULL) ); //initialize the random seed
 
 		ROS_INFO("Finished constructing the motion selector node");
@@ -84,7 +86,7 @@ public:
                 // Subscribers
 
                 //pose_sub = nh.subscribe("/pose", 1, &MotionSelectorNode::OnPose, this);
-                //velocity_sub = nh.subscribe("/twist", 1, &MotionSelectorNode::OnVelocity, this);
+                velocity_sub = nh.subscribe("/twist", 1, &MotionSelectorNode::OnVelocity, this);
                 //depth_image_sub = nh.subscribe("/flight/r200/points_xyz", 1, &MotionSelectorNode::OnDepthImage, this);
                 //local_goal_sub = nh.subscribe("/local_goal", 1, &MotionSelectorNode::OnLocalGoal, this);
                 //value_grid_sub = nh.subscribe("/value_grid", 1, &MotionSelectorNode::OnValueGrid, this);
