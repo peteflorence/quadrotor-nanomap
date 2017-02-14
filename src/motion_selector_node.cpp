@@ -85,6 +85,9 @@ public:
 
                 pose_sub = nh.subscribe("/pose", 1, &MotionSelectorNode::OnPose, this);
                 velocity_sub = nh.subscribe("/twist", 1, &MotionSelectorNode::OnVelocity, this);
+
+
+
                 depth_image_sub = nh.subscribe("/flight/r200/points_xyz", 1, &MotionSelectorNode::OnDepthImage, this);
                 local_goal_sub = nh.subscribe("/local_goal", 1, &MotionSelectorNode::OnLocalGoal, this);
                 //value_grid_sub = nh.subscribe("/value_grid", 1, &MotionSelectorNode::OnValueGrid, this);
@@ -286,7 +289,7 @@ private:
 
 			Vector3 final_position_world = TransformOrthoBodyToWorld(final_position_ortho_body);
 			
-			if (speed_initial < 2.0 && carrot_ortho_body_frame.norm() < 2.0) {
+			if (speed_initial < 2.0 && carrot_ortho_body_frame.norm() < 1.0) {
 				motion_selector.SetSoftTopSpeed(soft_top_speed_max);
 				return;
 			}
