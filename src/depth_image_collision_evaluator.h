@@ -18,6 +18,8 @@ public:
                 K << 308.57684326171875, 0.0, 154.6868438720703, 0.0, 308.57684326171875, 120.21442413330078, 0.0, 0.0, 1.0;
                 K/=4.0;
                 K(2,2) = 1.0;
+
+                R << 1,0,0,0,1,0,0,0,1;
 	}
 	
   void UpdatePointCloudPtr(pcl::PointCloud<pcl::PointXYZ>::Ptr const& xyz_cloud_new);

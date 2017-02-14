@@ -63,7 +63,7 @@ private:
   void computeProbabilityOfCollisionOneMotion(Motion motion, double &collision_probability, double &hokuyo_collision_probability);
   double computeProbabilityOfCollisionOneMotion_MonteCarlo(Motion motion, std::vector<Vector3> sampled_initial_velocities, size_t n);
   
-  double final_time;
+  double final_time = 1.0;
   double start_time = 0.0;
 
   Eigen::Matrix<Scalar, 10, 1> sampling_time_vector;
@@ -82,7 +82,7 @@ private:
   std::vector<double> objectives_dijkstra;
   std::vector<double> objectives_euclid;
 
-  double soft_top_speed;
+  double soft_top_speed = 1.0;
 
   double collision_reward = -10000;
   //double collision_reward = -100000000; // PLAGUE setting
@@ -90,7 +90,7 @@ private:
   bool use_3d_library = true;
   double nominal_altitude = 1.5;
 
-  Vector3 last_desired_acceleration;
+  Vector3 last_desired_acceleration = Vector3(0,0,0);
 
 };
 
