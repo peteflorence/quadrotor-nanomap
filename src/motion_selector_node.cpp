@@ -77,7 +77,7 @@ public:
 
 		    break;
 		}
-		PublishOrthoBodyTransform(0.0, 0.0); 
+		PublishOrthoBodyTransform(0.0, 0.0); // initializes ortho_body transform to be with 0, 0 roll, pitch
 
 		srand ( time(NULL) ); //initialize the random seed
 
@@ -90,7 +90,7 @@ public:
                 //depth_image_sub = nh.subscribe("/flight/r200/points_xyz", 1, &MotionSelectorNode::OnDepthImage, this);
                 //local_goal_sub = nh.subscribe("/local_goal", 1, &MotionSelectorNode::OnLocalGoal, this);
                 //value_grid_sub = nh.subscribe("/value_grid", 1, &MotionSelectorNode::OnValueGrid, this);
-                //laser_scan_sub = nh.subscribe("/laserscan_to_pointcloud/cloud2_out", 1, &MotionSelectorNode::OnScan, this);
+                laser_scan_sub = nh.subscribe("/laserscan_to_pointcloud/cloud2_out", 1, &MotionSelectorNode::OnScan, this);
 
 
                 // Publishers
@@ -590,11 +590,12 @@ private:
 		if (depth_image_collision_ptr != nullptr) {
 
 			//sensor_msgs::PointCloud2ConstPtr laser_point_cloud_msg_ptr(laser_point_cloud_msg);
+			
 			pcl::PointCloud<pcl::PointXYZ>::Ptr ortho_body_cloud(new pcl::PointCloud<pcl::PointXYZ>);
 		    TransformToOrthoBodyPointCloud("laser", laser_point_cloud_msg, ortho_body_cloud);
 
 		    if (!use_3d_library) {
-		    	ProjectOrthoBodyLaserPointCloud(ortho_body_cloud);
+		     	ProjectOrthoBodyLaserPointCloud(ortho_body_cloud);
 		    }
 
 			depth_image_collision_ptr->UpdateLaserPointCloudPtr(ortho_body_cloud);
@@ -710,10 +711,10 @@ private:
 
 	  	pcl_ros::transformPointCloud(transform_eigen, *msg, msg_out);
 
-		pcl::PCLPointCloud2* cloud2 = new pcl::PCLPointCloud2; 
-		pcl_conversions::toPCL(msg_out, *cloud2);
+		pcl::PCLPointCloud2 cloud2;
+		pcl_conversions::toPCL(msg_out, cloud2);
 		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-		pcl::fromPCLPointCloud2(*cloud2,*cloud);
+		pcl::fromPCLPointCloud2(cloud2,*cloud);
 
 		cloud_out = cloud;
 	}
