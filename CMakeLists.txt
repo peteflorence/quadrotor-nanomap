@@ -21,6 +21,7 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   mavros_msgs
   pcl_ros
+  fla_msgs
 )
 
 add_message_files( DIRECTORY msg FILES Coeff.msg State.msg )
