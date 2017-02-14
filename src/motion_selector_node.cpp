@@ -83,12 +83,12 @@ public:
 
                 // Subscribers
 
-                pose_sub = nh.subscribe("/pose", 1, &MotionSelectorNode::OnPose, this);
-                velocity_sub = nh.subscribe("/twist", 1, &MotionSelectorNode::OnVelocity, this);
-                depth_image_sub = nh.subscribe("/flight/r200/points_xyz", 1, &MotionSelectorNode::OnDepthImage, this);
-                local_goal_sub = nh.subscribe("/local_goal", 1, &MotionSelectorNode::OnLocalGoal, this);
+                //pose_sub = nh.subscribe("/pose", 1, &MotionSelectorNode::OnPose, this);
+                //velocity_sub = nh.subscribe("/twist", 1, &MotionSelectorNode::OnVelocity, this);
+                //depth_image_sub = nh.subscribe("/flight/r200/points_xyz", 1, &MotionSelectorNode::OnDepthImage, this);
+                //local_goal_sub = nh.subscribe("/local_goal", 1, &MotionSelectorNode::OnLocalGoal, this);
                 //value_grid_sub = nh.subscribe("/value_grid", 1, &MotionSelectorNode::OnValueGrid, this);
-                laser_scan_sub = nh.subscribe("/laserscan_to_pointcloud/cloud2_out", 1, &MotionSelectorNode::OnScan, this);
+                //laser_scan_sub = nh.subscribe("/laserscan_to_pointcloud/cloud2_out", 1, &MotionSelectorNode::OnScan, this);
 
 
                 // Publishers
@@ -842,16 +842,13 @@ private:
 
 	Eigen::Vector4d pose_x_y_z_yaw;
 
-	Eigen::Matrix<Scalar, Eigen::Dynamic, 1> sampling_time_vector;
-	size_t num_samples;
-
 	std::mutex mutex;
 
 	Vector3 carrot_world_frame;
 	Vector3 carrot_ortho_body_frame = Vector3(0,0,0);
 
 	size_t best_traj_index = 0;
-	Vector3 desired_acceleration;
+	Vector3 desired_acceleration = Vector3(0,0,0);
 
 	MotionSelector motion_selector;
 	AttitudeGenerator attitude_generator;
@@ -865,8 +862,7 @@ private:
 	double soft_top_speed_max = 0.0;
 	bool use_depth_image = true;
 	bool use_3d_library = false;
-	double flight_altitude;
-
+	double flight_altitude = 1.0;
 
 	bool executing_e_stop = false;
 	double begin_e_stop_time = 0.0;
@@ -875,8 +871,8 @@ private:
 
 	double laser_z_below_project_up = -0.5;
 
-	double time_of_start_dolphin_stroke;
-	double speed = 0;
+	double time_of_start_dolphin_stroke = 0.0;
+	double speed = 0.0;
 
 	enum StatusArg {
 			NOMINAL = 0
