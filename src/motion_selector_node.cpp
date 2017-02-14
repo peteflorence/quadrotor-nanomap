@@ -412,7 +412,7 @@ private:
 		SetPose(pose.pose.position.x, pose.pose.position.y, pose.pose.position.z, yaw);
 		mutex.unlock();
 
-		// Punlish WE ARE ALIVE
+		// Publish WE ARE ALIVE
 		fla_msgs::ProcessStatus msg;
 		msg.id = 21; // 21 is motion_primitives status_id
 		msg.pid = getpid();
