@@ -412,7 +412,7 @@ private:
 		SetPose(pose.pose.position.x, pose.pose.position.y, pose.pose.position.z, yaw);
 		mutex.unlock();
 
-		// Punlish WE ARE ALIVE
+		// Publish WE ARE ALIVE
 		fla_msgs::ProcessStatus msg;
 		msg.id = 21; // 21 is motion_primitives status_id
 		msg.pid = getpid();
@@ -734,14 +734,15 @@ private:
 
 			if (depth_image_collision_ptr != nullptr) {
 
-		    	pcl::PointCloud<pcl::PointXYZ>::Ptr ortho_body_cloud(new pcl::PointCloud<pcl::PointXYZ>);
-		    	TransformToOrthoBodyPointCloud("r200_depth_optical_frame", point_cloud_msg, ortho_body_cloud);
-
 		    	Matrix3 R = GetOrthoBodyToRDFRotationMatrix();
 
 		    	mutex.lock();
 				depth_image_collision_ptr->UpdateRotationMatrix(R);
-				depth_image_collision_ptr->UpdatePointCloudPtr(ortho_body_cloud);
+				if(use_depth_image) {
+					pcl::PointCloud<pcl::PointXYZ>::Ptr ortho_body_cloud(new pcl::PointCloud<pcl::PointXYZ>);
+		    		TransformToOrthoBodyPointCloud("r200_depth_optical_frame", point_cloud_msg, ortho_body_cloud);
+					depth_image_collision_ptr->UpdatePointCloudPtr(ortho_body_cloud);
+				}
 				mutex.unlock();
 			}
 			ReactToSampledPointCloud();

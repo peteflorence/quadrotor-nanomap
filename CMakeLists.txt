@@ -28,7 +28,7 @@ add_message_files( DIRECTORY msg FILES Coeff.msg State.msg )
 generate_messages( DEPENDENCIES std_msgs nav_msgs)
 
 find_package( Eigen3 REQUIRED )
-find_package(OpenCV 2.4.8 REQUIRED)
+find_package(OpenCV REQUIRED)
 find_package(PCL REQUIRED)
 
 include_directories ( src )
@@ -44,6 +44,8 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
+add_definitions("-std=c++11")
+
 find_package(orocos_kdl REQUIRED)
 find_library(OROCOS_KDL orocos-kdl)
 set(orocos_kdl_LIBRARIES ${OROCOS_KDL})
@@ -54,7 +56,4 @@ add_library( motion_selector src/motion_selector.cpp src/motion_library.cpp src/
 
 add_executable( motion_selector_node src/motion_selector_node.cpp )
 target_link_libraries( motion_selector_node motion_selector ${catkin_LIBRARIES} ${PCL_LIBRARIES} orocos-kdl)
-
-add_executable( state_estimate_corruptor_node src/experimental/state_estimate_corruptor_node.cpp )
-target_link_libraries( state_estimate_corruptor_node  ${catkin_LIBRARIES})
 

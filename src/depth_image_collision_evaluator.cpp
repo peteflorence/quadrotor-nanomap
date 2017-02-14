@@ -82,7 +82,7 @@ double DepthImageCollisionEvaluator::IsOutsideFOV(Vector3 robot_position) {
       return 0.0;
     } 
     pcl::PointXYZ point = xyz_cloud_ptr->at(pi_x,pi_y);
-    if (isnan(point.z)) { 
+    if (std::isnan(point.z)) { 
        return 0.0;
     }
     Vector3 position_ortho_body = Vector3(point.x, point.y, point.z);
