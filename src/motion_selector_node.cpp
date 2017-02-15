@@ -637,10 +637,15 @@ private:
         double A_dolphin = 0.5;
         double T_dolphin = 3.0;
         double dolphin_acceleration_threshold = 1.0;
+        double duration_of_no_accel_threshold = 1.0;
+
 
         double dolphin_wave_time = 0;
         double time_of_last_dolphin_query = 0;
         bool dolphin_initialized = false;
+        double time_of_last_dolphin_query_above_threshold = 0;
+
+
 
 	double DolphinStrokeDetermineAltitude(double speed) {
 		if (!dolphin_initialized) {
@@ -654,7 +659,12 @@ private:
 		time_of_last_dolphin_query = time_now;
 
 		if (desired_acceleration.norm() < dolphin_acceleration_threshold) {
-			dolphin_wave_time += t_increment;
+			if ((time_now - time_of_last_dolphin_query_above_threshold) > duration_of_no_accel_threshold) {
+				dolphin_wave_time += t_increment;
+			}
+		}
+		else {
+			time_of_last_dolphin_query_above_threshold = time_of_last_dolphin_query;
 		}
 
 		return A_dolphin * cos(dolphin_wave_time * 2 * M_PI / T_dolphin) + flight_altitude;
