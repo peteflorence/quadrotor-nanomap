@@ -85,8 +85,6 @@ public:
 
                 // Subscribers
 
-
-
                 pose_sub = nh.subscribe("/pose", 1, &MotionSelectorNode::OnPose, this);
                 velocity_sub = nh.subscribe("/twist", 1, &MotionSelectorNode::OnVelocity, this);
                 
@@ -126,6 +124,7 @@ public:
 			got_camera_info = true;
 			ROS_WARN_THROTTLE(1.0, "Received camera info");
 		}
+		depth_sensor_frame = msg.header.frame_id;
 	}
 
 	void SetThrustForLibrary(double thrust) {
@@ -511,23 +510,29 @@ private:
 
 	Vector3 transformOrthoBodyIntoRDFFrame(Vector3 const& ortho_body_vector) {
 		geometry_msgs::TransformStamped tf;
+		if (!got_camera_info) {
+			return Vector3(0,0,0);
+		}
     	try {
-     		tf = tf_buffer_.lookupTransform("r200_depth_optical_frame", "ortho_body", 
+     		tf = tf_buffer_.lookupTransform(depth_sensor_frame, "ortho_body", 
                                     ros::Time(0), ros::Duration(1/30.0));
    		} catch (tf2::TransformException &ex) {
      	 	ROS_ERROR("ID 4 %s", ex.what());
       	return Vector3(0,0,0);
     	}
     	geometry_msgs::PoseStamped pose_ortho_body_vector = PoseFromVector3(ortho_body_vector, "ortho_body");
-    	geometry_msgs::PoseStamped pose_vector_rdf_frame = PoseFromVector3(Vector3(0,0,0), "r200_depth_optical_frame");
+    	geometry_msgs::PoseStamped pose_vector_rdf_frame = PoseFromVector3(Vector3(0,0,0), depth_sensor_frame);
     	tf2::doTransform(pose_ortho_body_vector, pose_vector_rdf_frame, tf);
     	return VectorFromPose(pose_vector_rdf_frame);
 	}
 
 	Matrix3 GetOrthoBodyToRDFRotationMatrix() {
 		geometry_msgs::TransformStamped tf;
+		if (!got_camera_info) {
+			return Matrix3();
+		}
     	try {
-     		tf = tf_buffer_.lookupTransform("r200_depth_optical_frame", "ortho_body", 
+     		tf = tf_buffer_.lookupTransform(depth_sensor_frame, "ortho_body", 
                                     ros::Time(0), ros::Duration(1/30.0));
    		} catch (tf2::TransformException &ex) {
      	 	ROS_ERROR("ID 5 %s", ex.what());
@@ -771,7 +776,7 @@ private:
 				depth_image_collision_ptr->UpdateRotationMatrix(R);
 				if(use_depth_image) {
 					pcl::PointCloud<pcl::PointXYZ>::Ptr ortho_body_cloud(new pcl::PointCloud<pcl::PointXYZ>);
-		    		TransformToOrthoBodyPointCloud("r200_depth_optical_frame", point_cloud_msg, ortho_body_cloud);
+		    		TransformToOrthoBodyPointCloud(depth_sensor_frame, point_cloud_msg, ortho_body_cloud);
 					depth_image_collision_ptr->UpdatePointCloudPtr(ortho_body_cloud);
 				}
 				mutex.unlock();
@@ -870,6 +875,8 @@ private:
 	ros::Publisher attitude_thrust_pub;
 	ros::Publisher attitude_setpoint_visualization_pub;
 	ros::Publisher status_pub;
+
+	std::string depth_sensor_frame = "depth_sensor";
 
 	std::vector<ros::Publisher> action_paths_pubs;
 	tf::TransformListener listener;
