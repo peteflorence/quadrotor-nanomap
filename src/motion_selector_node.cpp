@@ -942,7 +942,6 @@ int main(int argc, char* argv[]) {
 
 	MotionSelectorNode motion_selector_node;
 
-	std::cout << "Got through to here" << std::endl;
 	ros::Rate spin_rate(100);
 
 	auto t1 = std::chrono::high_resolution_clock::now();

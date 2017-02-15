@@ -5,7 +5,6 @@
 void DepthImageCollisionEvaluator::UpdatePointCloudPtr(pcl::PointCloud<pcl::PointXYZ>::Ptr const& xyz_cloud_new) {
 	xyz_cloud_ptr = xyz_cloud_new;
   my_kd_tree_depth_image.Initialize(xyz_cloud_ptr);
-  std::cout << "My K matrix is now " << K << std::endl;
 }
 
 void DepthImageCollisionEvaluator::UpdateLaserPointCloudPtr(pcl::PointCloud<pcl::PointXYZ>::Ptr const& xyz_cloud_new) {
