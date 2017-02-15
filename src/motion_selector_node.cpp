@@ -7,6 +7,7 @@
 #include <mavros_msgs/AttitudeTarget.h>
 #include <nav_msgs/OccupancyGrid.h>
 #include <sensor_msgs/PointCloud2.h>
+#include <sensor_msgs/CameraInfo.h>
 #include "fla_msgs/ProcessStatus.h"
 
 #include "tf/tf.h"
@@ -78,16 +79,16 @@ public:
 		    break;
 		}
 		PublishOrthoBodyTransform(0.0, 0.0); // initializes ortho_body transform to be with 0, 0 roll, pitch
-
 		srand ( time(NULL) ); //initialize the random seed
-
-		ROS_INFO("Finished constructing the motion selector node");
 
                 // Subscribers
 
                 pose_sub = nh.subscribe("/pose", 1, &MotionSelectorNode::OnPose, this);
                 velocity_sub = nh.subscribe("/twist", 1, &MotionSelectorNode::OnVelocity, this);
-                depth_image_sub = nh.subscribe("/flight/r200/points_xyz", 1, &MotionSelectorNode::OnDepthImage, this);
+                
+				camera_info_sub = nh.subscribe("depth_camera_info", 1, &MotionSelectorNode::OnCameraInfo, this);
+                depth_image_sub = nh.subscribe("depth_camera_pointcloud", 1, &MotionSelectorNode::OnDepthImage, this);
+                
                 local_goal_sub = nh.subscribe("/local_goal", 1, &MotionSelectorNode::OnLocalGoal, this);
                 //value_grid_sub = nh.subscribe("/value_grid", 1, &MotionSelectorNode::OnValueGrid, this);
                 laser_scan_sub = nh.subscribe("/laserscan_to_pointcloud/cloud2_out", 1, &MotionSelectorNode::OnScan, this);
@@ -102,6 +103,26 @@ public:
 
 
 
+	}
+
+	bool got_camera_info = false;
+	void OnCameraInfo(const sensor_msgs::CameraInfo msg) {
+		if (got_camera_info) {
+			return;
+		}
+		double height = msg.height;
+		double width = msg.width;
+		Matrix3 K_camera_info;
+		K_camera_info << msg.K[0], msg.K[1], msg.K[2], msg.K[3], msg.K[4], msg.K[5], msg.K[6], msg.K[7], msg.K[8];
+		if (msg.binning_x != msg.binning_y) { std::cout << "WARNING: Binning isn't same for camera info" << std::endl;}
+		double bin = msg.binning_x;
+		DepthImageCollisionEvaluator* depth_image_collision_ptr = motion_selector.GetDepthImageCollisionEvaluatorPtr();
+		if (depth_image_collision_ptr != nullptr) {
+			depth_image_collision_ptr->setCameraInfo(bin, width, height, K_camera_info);
+			got_camera_info = true;
+			ROS_WARN_THROTTLE(1.0, "Received camera info");
+		}
+		depth_sensor_frame = msg.header.frame_id;
 	}
 
 	void SetThrustForLibrary(double thrust) {
@@ -134,6 +155,10 @@ public:
 	}
 
 	void ReactToSampledPointCloud() {
+		if (!got_camera_info) {
+			ROS_WARN_THROTTLE(1.0, "Haven't received camera info yet");
+		}
+
 		auto t1 = std::chrono::high_resolution_clock::now();
 		mutex.lock();
 		motion_selector.computeBestEuclideanMotion(carrot_ortho_body_frame, best_traj_index, desired_acceleration);
@@ -288,7 +313,7 @@ private:
 
 			Vector3 final_position_world = TransformOrthoBodyToWorld(final_position_ortho_body);
 			
-			if (speed_initial < 2.0 && carrot_ortho_body_frame.norm() < 2.0) {
+			if (speed_initial < 2.0 && carrot_ortho_body_frame.norm() < 1.0) {
 				motion_selector.SetSoftTopSpeed(soft_top_speed_max);
 				return;
 			}
@@ -414,13 +439,25 @@ private:
 		SetPose(pose.pose.position.x, pose.pose.position.y, pose.pose.position.z, yaw);
 		mutex.unlock();
 
-		// Publish WE ARE ALIVE
+		PublishHealthStatus();
+	}
+
+	void PublishHealthStatus() {
+
 		fla_msgs::ProcessStatus msg;
 		msg.id = 21; // 21 is motion_primitives status_id
 		msg.pid = getpid();
+
 		msg.status = fla_msgs::ProcessStatus::READY;
 		msg.arg = 0;
+
+		if (!got_camera_info) {
+			msg.status = fla_msgs::ProcessStatus::ALARM;
+			msg.arg = 1;  
+		}
+		
 		status_pub.publish(msg);
+
 	}
 
 	void SetPose(double x, double y, double z, double yaw) {
@@ -471,23 +508,29 @@ private:
 
 	Vector3 transformOrthoBodyIntoRDFFrame(Vector3 const& ortho_body_vector) {
 		geometry_msgs::TransformStamped tf;
+		if (!got_camera_info) {
+			return Vector3(0,0,0);
+		}
     	try {
-     		tf = tf_buffer_.lookupTransform("r200_depth_optical_frame", "ortho_body", 
+     		tf = tf_buffer_.lookupTransform(depth_sensor_frame, "ortho_body", 
                                     ros::Time(0), ros::Duration(1/30.0));
    		} catch (tf2::TransformException &ex) {
      	 	ROS_ERROR("ID 4 %s", ex.what());
       	return Vector3(0,0,0);
     	}
     	geometry_msgs::PoseStamped pose_ortho_body_vector = PoseFromVector3(ortho_body_vector, "ortho_body");
-    	geometry_msgs::PoseStamped pose_vector_rdf_frame = PoseFromVector3(Vector3(0,0,0), "r200_depth_optical_frame");
+    	geometry_msgs::PoseStamped pose_vector_rdf_frame = PoseFromVector3(Vector3(0,0,0), depth_sensor_frame);
     	tf2::doTransform(pose_ortho_body_vector, pose_vector_rdf_frame, tf);
     	return VectorFromPose(pose_vector_rdf_frame);
 	}
 
 	Matrix3 GetOrthoBodyToRDFRotationMatrix() {
 		geometry_msgs::TransformStamped tf;
+		if (!got_camera_info) {
+			return Matrix3();
+		}
     	try {
-     		tf = tf_buffer_.lookupTransform("r200_depth_optical_frame", "ortho_body", 
+     		tf = tf_buffer_.lookupTransform(depth_sensor_frame, "ortho_body", 
                                     ros::Time(0), ros::Duration(1/30.0));
    		} catch (tf2::TransformException &ex) {
      	 	ROS_ERROR("ID 5 %s", ex.what());
@@ -732,7 +775,7 @@ private:
 				depth_image_collision_ptr->UpdateRotationMatrix(R);
 				if(use_depth_image) {
 					pcl::PointCloud<pcl::PointXYZ>::Ptr ortho_body_cloud(new pcl::PointCloud<pcl::PointXYZ>);
-		    		TransformToOrthoBodyPointCloud("r200_depth_optical_frame", point_cloud_msg, ortho_body_cloud);
+		    		TransformToOrthoBodyPointCloud(depth_sensor_frame, point_cloud_msg, ortho_body_cloud);
 					depth_image_collision_ptr->UpdatePointCloudPtr(ortho_body_cloud);
 				}
 				mutex.unlock();
@@ -817,6 +860,7 @@ private:
 	}
 
 
+	ros::Subscriber camera_info_sub;
 	ros::Subscriber pose_sub;
 	ros::Subscriber velocity_sub;
 	ros::Subscriber depth_image_sub;
@@ -830,6 +874,8 @@ private:
 	ros::Publisher attitude_thrust_pub;
 	ros::Publisher attitude_setpoint_visualization_pub;
 	ros::Publisher status_pub;
+
+	std::string depth_sensor_frame = "depth_sensor";
 
 	std::vector<ros::Publisher> action_paths_pubs;
 	tf::TransformListener listener;
