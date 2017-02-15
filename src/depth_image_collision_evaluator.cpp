@@ -150,7 +150,8 @@ double DepthImageCollisionEvaluator::computeProbabilityOfCollisionNPositionsKDTr
 }
 
 void DepthImageCollisionEvaluator::setCameraInfo(double bin, double width, double height, Matrix3 K_camera_info) {
-  binning = bin;
+  if (bin < 1.0) {binning = 1.0;}
+  else {binning = bin;}
   num_x_pixels = width / binning;
   num_y_pixels = height / binning;
   K = K_camera_info;
