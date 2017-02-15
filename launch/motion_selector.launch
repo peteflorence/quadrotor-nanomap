@@ -14,10 +14,11 @@
   <arg name="max_e_stop_pitch_degrees" default="45.0"/>
   <arg name="laser_z_below_project_up" default="-0.5"/>
 
-  <arg name="A_dolphin" default="0.5"/>
+  <arg name="A_dolphin" default="0.25"/>
   <arg name="T_dolphin" default="3.0"/>
 
-  <arg name="use_xtion" default="true" /> <!-- otherwise use r200 -->
+  <arg name="use_xtion" default="true" />
+  <!-- otherwise use r200 -->
 
   <arg name="r200_depth_camera_info_topic" default="/flight/r200/depth_red/camera_info" />
   <arg name="r200_depth_camera_pointcloud_topic" default="/flight/r200/points_xyz" />
@@ -26,10 +27,10 @@
   <arg name="xtion_depth_camera_pointcloud_topic" default="/flight/xtion_depth/points" />
 
   <param name="soft_top_speed" type="double" value="$(arg soft_top_speed)"/>
-	<param name="acceleration_interpolation_min" type="double" value="$(arg acceleration_interpolation_min)"/>
+  <param name="acceleration_interpolation_min" type="double" value="$(arg acceleration_interpolation_min)"/>
   <param name="acceleration_interpolation_max" type="double" value="$(arg acceleration_interpolation_max)"/>
   <param name="speed_at_acceleration_max" type="double" value="$(arg speed_at_acceleration_max)"/>
-	<param name="yaw_on" type="bool" value="$(arg yaw_on)"/>
+  <param name="yaw_on" type="bool" value="$(arg yaw_on)"/>
   <param name="use_depth_image" type="bool" value="$(arg use_depth_image)"/>
   <param name="flight_altitude" type="double" value="$(arg flight_altitude)"/>
   <param name="use_3d_library" type="bool" value="$(arg use_3d_library)"/>
@@ -47,5 +48,5 @@
     <remap from="/depth_camera_info" to="$(arg xtion_depth_camera_info_topic)" if="$(arg use_xtion)"/>
     <remap from="/depth_camera_pointcloud" to="$(arg xtion_depth_camera_pointcloud_topic)" if="$(arg use_xtion)"/>
   </node>
- 
+
 </launch>
