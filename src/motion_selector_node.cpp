@@ -651,7 +651,7 @@ private:
 
 		double time_now = ros::Time::now().toSec();
 		double t_increment = time_now - time_of_last_dolphin_query;
-		double time_of_last_dolphin_query = time_now;
+		time_of_last_dolphin_query = time_now;
 
 		if (desired_acceleration.norm() < dolphin_acceleration_threshold) {
 			dolphin_wave_time += t_increment;
