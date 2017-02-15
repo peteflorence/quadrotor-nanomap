@@ -98,7 +98,7 @@ public:
                 carrot_pub = nh.advertise<visualization_msgs::Marker>( "carrot_marker", 0 );
                 gaussian_pub = nh.advertise<visualization_msgs::Marker>( "gaussian_visualization", 0 );
                 attitude_thrust_pub = nh.advertise<mavros_msgs::AttitudeTarget>("/mux_input_1", 1);
-                //attitude_setpoint_visualization_pub = nh.advertise<geometry_msgs::PoseStamped>("attitude_setpoint", 1);
+                attitude_setpoint_visualization_pub = nh.advertise<geometry_msgs::PoseStamped>("attitude_setpoint", 1);
                 status_pub = nh.advertise<fla_msgs::ProcessStatus>("/globalstatus", 0);
 
 
@@ -682,38 +682,68 @@ private:
 	// T = period
         double A_dolphin = 0.5;
         double T_dolphin = 3.0;
-        double dolphin_acceleration_threshold = 1.0;
-        double duration_of_no_accel_threshold = 1.0;
+        double dolphin_acceleration_threshold = 2.0;
+        double cooldown_duration = 3.0;
 
-
-        double dolphin_wave_time = 0;
         double time_of_last_dolphin_query = 0;
         bool dolphin_initialized = false;
-        double time_of_last_dolphin_query_above_threshold = 0;
+        double time_of_start_cooldown = 0;
 
+        double dolphin_offset = 0.0;
+
+        bool in_cooldown = false;
+
+
+    // John-style Dolphin
+
+    // if aggressive action chosen
+    // dolphin cooldown timer = 0
+
+    //if timer > dolphin_cooldown_time 
+    	//dolphin_offset = sin(t)
+    //else
+    	//dolphin_offset *= 0.95;
+    	//reset dolphin phase 
 
 
 	double DolphinStrokeDetermineAltitude(double speed) {
 		if (!dolphin_initialized) {
 			dolphin_initialized = true;
-			time_of_last_dolphin_query = ros::Time::now().toSec();
+			time_of_start_dolphin_stroke = ros::Time::now().toSec();
+			time_of_start_cooldown = ros::Time::now().toSec();
 			return flight_altitude;
 		}
 
 		double time_now = ros::Time::now().toSec();
-		double t_increment = time_now - time_of_last_dolphin_query;
-		time_of_last_dolphin_query = time_now;
 
-		if (desired_acceleration.norm() < dolphin_acceleration_threshold) {
-			if ((time_now - time_of_last_dolphin_query_above_threshold) > duration_of_no_accel_threshold) {
-				dolphin_wave_time += t_increment;
+		if (desired_acceleration.norm() > dolphin_acceleration_threshold) {
+			time_of_start_cooldown = time_now;
+			in_cooldown = true;
+		}
+		
+		if ( (time_now - time_of_start_cooldown) > cooldown_duration) {
+			if (in_cooldown) {
+				in_cooldown = false;
+				time_of_start_dolphin_stroke = time_now;
 			}
+			double time_since_start_dolphin = time_now - time_of_start_dolphin_stroke;
+			dolphin_offset = A_dolphin * sin(time_since_start_dolphin * 2 * M_PI / T_dolphin);
+
 		}
 		else {
-			time_of_last_dolphin_query_above_threshold = time_of_last_dolphin_query;
+			if (dolphin_offset > 0) {dolphin_offset = dolphin_offset - 0.01;}
+			else {dolphin_offset = dolphin_offset + 0.01;}
 		}
 
-		return A_dolphin * cos(dolphin_wave_time * 2 * M_PI / T_dolphin) + flight_altitude;
+		double ans = dolphin_offset + flight_altitude;
+
+		geometry_msgs::PoseStamped pose;
+		pose.pose.position.z = ans;
+		pose.header.stamp = ros::Time::now();
+		pose.header.frame_id = "world";
+		attitude_setpoint_visualization_pub.publish(pose);
+
+		return ans;
 	}
 
 
