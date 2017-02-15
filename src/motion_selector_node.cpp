@@ -79,25 +79,21 @@ public:
 		    break;
 		}
 
-		std::string depth_image_camera_info = "/flight/r200/depth_red/camera_info";
-		camera_info_sub = nh.subscribe(depth_image_camera_info, 1, &MotionSelectorNode::OnCameraInfo, this);
-
-		// for(;;){
-		//     if (!got_camera_info) {
-		//     	ROS_WARN_THROTTLE(1.0, "Haven't received camera info");
-		//     	continue;
-		//     }
-		//     break;
-		// }
 
 
 		srand ( time(NULL) ); //initialize the random seed
 
                 // Subscribers
 
+
+
                 pose_sub = nh.subscribe("/pose", 1, &MotionSelectorNode::OnPose, this);
                 velocity_sub = nh.subscribe("/twist", 1, &MotionSelectorNode::OnVelocity, this);
+                
+                std::string depth_image_camera_info = "/flight/r200/depth_red/camera_info";
+				camera_info_sub = nh.subscribe(depth_image_camera_info, 1, &MotionSelectorNode::OnCameraInfo, this);
                 depth_image_sub = nh.subscribe("/flight/r200/points_xyz", 1, &MotionSelectorNode::OnDepthImage, this);
+                
                 local_goal_sub = nh.subscribe("/local_goal", 1, &MotionSelectorNode::OnLocalGoal, this);
                 //value_grid_sub = nh.subscribe("/value_grid", 1, &MotionSelectorNode::OnValueGrid, this);
                 laser_scan_sub = nh.subscribe("/laserscan_to_pointcloud/cloud2_out", 1, &MotionSelectorNode::OnScan, this);
@@ -115,23 +111,22 @@ public:
 	}
 
 	bool got_camera_info = false;
-	
 	void OnCameraInfo(const sensor_msgs::CameraInfo msg) {
-		// ROS_INFO("GOT CAMERA INFO");
 		if (got_camera_info) {
 			return;
 		}
-		got_camera_info = true;
-		std::cout << "HERE IS MY CAMERA INFO" << std::endl;
-
-		std::cout << "height: " << msg.height << std::endl;
-		std::cout << "width: " << msg.width << std::endl;
-		
-		std::cout << "K[0]" << msg.K[0] << std::endl;
-		
-		std::cout << "binning_x" << msg.binning_x << std::endl;
-		std::cout << "binning_y" << msg.binning_y << std::endl;
-
+		double height = msg.height;
+		double width = msg.width;
+		Matrix3 K_camera_info;
+		K_camera_info << msg.K[0], msg.K[1], msg.K[2], msg.K[3], msg.K[4], msg.K[5], msg.K[6], msg.K[7], msg.K[8];
+		if (msg.binning_x != msg.binning_y) { std::cout << "WARNING: Binning isn't same for camera info" << std::endl;}
+		double bin = msg.binning_x;
+		DepthImageCollisionEvaluator* depth_image_collision_ptr = motion_selector.GetDepthImageCollisionEvaluatorPtr();
+		if (depth_image_collision_ptr != nullptr) {
+			depth_image_collision_ptr->setCameraInfo(bin, width, height, K_camera_info);
+			got_camera_info = true;
+			ROS_WARN_THROTTLE(1.0, "Received camera info");
+		}
 	}
 
 	void SetThrustForLibrary(double thrust) {
@@ -164,6 +159,10 @@ public:
 	}
 
 	void ReactToSampledPointCloud() {
+		if (!got_camera_info) {
+			ROS_WARN_THROTTLE(1.0, "Haven't received camera info yet");
+		}
+
 		auto t1 = std::chrono::high_resolution_clock::now();
 		mutex.lock();
 		motion_selector.computeBestEuclideanMotion(carrot_ortho_body_frame, best_traj_index, desired_acceleration);
@@ -444,13 +443,25 @@ private:
 		SetPose(pose.pose.position.x, pose.pose.position.y, pose.pose.position.z, yaw);
 		mutex.unlock();
 
-		// Publish WE ARE ALIVE
+		PublishHealthStatus();
+	}
+
+	void PublishHealthStatus() {
+
 		fla_msgs::ProcessStatus msg;
 		msg.id = 21; // 21 is motion_primitives status_id
 		msg.pid = getpid();
+
 		msg.status = fla_msgs::ProcessStatus::READY;
 		msg.arg = 0;
+
+		if (!got_camera_info) {
+			msg.status = fla_msgs::ProcessStatus::ALARM;
+			msg.arg = 1;  
+		}
+		
 		status_pub.publish(msg);
+
 	}
 
 	void SetPose(double x, double y, double z, double yaw) {

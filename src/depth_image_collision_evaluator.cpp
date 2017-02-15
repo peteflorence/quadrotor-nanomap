@@ -147,3 +147,14 @@ double DepthImageCollisionEvaluator::computeProbabilityOfCollisionNPositionsKDTr
   }
   return 0.0; // if no points in closest_pts
 }
+
+void DepthImageCollisionEvaluator::setCameraInfo(double bin, double width, double height, Matrix3 K_camera_info) {
+  binning = bin;
+  num_x_pixels = width;
+  num_y_pixels = height;
+  K = K_camera_info;
+  K /= binning;
+  K(2,2) = 1.0;
+  return;
+}
+
