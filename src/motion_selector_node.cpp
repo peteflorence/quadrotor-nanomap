@@ -7,6 +7,7 @@
 #include <mavros_msgs/AttitudeTarget.h>
 #include <nav_msgs/OccupancyGrid.h>
 #include <sensor_msgs/PointCloud2.h>
+#include <sensor_msgs/CameraInfo.h>
 #include "fla_msgs/ProcessStatus.h"
 
 #include "tf/tf.h"
@@ -77,17 +78,26 @@ public:
 
 		    break;
 		}
-		srand ( time(NULL) ); //initialize the random seed
 
-		ROS_INFO("Finished constructing the motion selector node");
+		std::string depth_image_camera_info = "/flight/r200/depth_red/camera_info";
+		camera_info_sub = nh.subscribe(depth_image_camera_info, 1, &MotionSelectorNode::OnCameraInfo, this);
+
+		for(;;){
+		    if (!got_camera_info) {
+		    	std::cout << "Haven't got camera info" << std::endl;
+		    	continue;
+		    }
+		    break;
+		}
+
+
+
+		srand ( time(NULL) ); //initialize the random seed
 
                 // Subscribers
 
                 pose_sub = nh.subscribe("/pose", 1, &MotionSelectorNode::OnPose, this);
                 velocity_sub = nh.subscribe("/twist", 1, &MotionSelectorNode::OnVelocity, this);
-
-
-
                 depth_image_sub = nh.subscribe("/flight/r200/points_xyz", 1, &MotionSelectorNode::OnDepthImage, this);
                 local_goal_sub = nh.subscribe("/local_goal", 1, &MotionSelectorNode::OnLocalGoal, this);
                 //value_grid_sub = nh.subscribe("/value_grid", 1, &MotionSelectorNode::OnValueGrid, this);
@@ -101,6 +111,18 @@ public:
                 //attitude_setpoint_visualization_pub = nh.advertise<geometry_msgs::PoseStamped>("attitude_setpoint", 1);
                 status_pub = nh.advertise<fla_msgs::ProcessStatus>("/globalstatus", 0);
 
+
+
+	}
+
+	bool got_camera_info = false;
+	void OnCameraInfo(const sensor_msgs::CameraInfo) {
+		// ROS_INFO("GOT CAMERA INFO");
+		if (got_camera_info) {
+			return;
+		}
+		got_camera_info = true;
+		std::cout << "HERE IS MY CAMERA INFO" << std::endl;
 
 
 	}
@@ -817,6 +839,7 @@ private:
 	}
 
 
+	ros::Subscriber camera_info_sub;
 	ros::Subscriber pose_sub;
 	ros::Subscriber velocity_sub;
 	ros::Subscriber depth_image_sub;
