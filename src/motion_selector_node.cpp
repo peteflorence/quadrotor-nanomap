@@ -82,14 +82,13 @@ public:
 		std::string depth_image_camera_info = "/flight/r200/depth_red/camera_info";
 		camera_info_sub = nh.subscribe(depth_image_camera_info, 1, &MotionSelectorNode::OnCameraInfo, this);
 
-		for(;;){
-		    if (!got_camera_info) {
-		    	std::cout << "Haven't got camera info" << std::endl;
-		    	continue;
-		    }
-		    break;
-		}
-
+		// for(;;){
+		//     if (!got_camera_info) {
+		//     	ROS_WARN_THROTTLE(1.0, "Haven't received camera info");
+		//     	continue;
+		//     }
+		//     break;
+		// }
 
 
 		srand ( time(NULL) ); //initialize the random seed
@@ -116,7 +115,8 @@ public:
 	}
 
 	bool got_camera_info = false;
-	void OnCameraInfo(const sensor_msgs::CameraInfo) {
+	
+	void OnCameraInfo(const sensor_msgs::CameraInfo msg) {
 		// ROS_INFO("GOT CAMERA INFO");
 		if (got_camera_info) {
 			return;
@@ -124,6 +124,13 @@ public:
 		got_camera_info = true;
 		std::cout << "HERE IS MY CAMERA INFO" << std::endl;
 
+		std::cout << "height: " << msg.height << std::endl;
+		std::cout << "width: " << msg.width << std::endl;
+		
+		std::cout << "K[0]" << msg.K[0] << std::endl;
+		
+		std::cout << "binning_x" << msg.binning_x << std::endl;
+		std::cout << "binning_y" << msg.binning_y << std::endl;
 
 	}
 
