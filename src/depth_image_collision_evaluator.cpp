@@ -5,6 +5,7 @@
 void DepthImageCollisionEvaluator::UpdatePointCloudPtr(pcl::PointCloud<pcl::PointXYZ>::Ptr const& xyz_cloud_new) {
 	xyz_cloud_ptr = xyz_cloud_new;
   my_kd_tree_depth_image.Initialize(xyz_cloud_ptr);
+  std::cout << "My K matrix is now " << K << std::endl;
 }
 
 void DepthImageCollisionEvaluator::UpdateLaserPointCloudPtr(pcl::PointCloud<pcl::PointXYZ>::Ptr const& xyz_cloud_new) {
@@ -150,8 +151,8 @@ double DepthImageCollisionEvaluator::computeProbabilityOfCollisionNPositionsKDTr
 
 void DepthImageCollisionEvaluator::setCameraInfo(double bin, double width, double height, Matrix3 K_camera_info) {
   binning = bin;
-  num_x_pixels = width;
-  num_y_pixels = height;
+  num_x_pixels = width / binning;
+  num_y_pixels = height / binning;
   K = K_camera_info;
   K /= binning;
   K(2,2) = 1.0;

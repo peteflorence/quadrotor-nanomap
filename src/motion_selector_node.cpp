@@ -90,9 +90,8 @@ public:
                 pose_sub = nh.subscribe("/pose", 1, &MotionSelectorNode::OnPose, this);
                 velocity_sub = nh.subscribe("/twist", 1, &MotionSelectorNode::OnVelocity, this);
                 
-                std::string depth_image_camera_info = "/flight/r200/depth_red/camera_info";
-				camera_info_sub = nh.subscribe(depth_image_camera_info, 1, &MotionSelectorNode::OnCameraInfo, this);
-                depth_image_sub = nh.subscribe("/flight/r200/points_xyz", 1, &MotionSelectorNode::OnDepthImage, this);
+				camera_info_sub = nh.subscribe("depth_camera_info", 1, &MotionSelectorNode::OnCameraInfo, this);
+                depth_image_sub = nh.subscribe("depth_camera_pointcloud", 1, &MotionSelectorNode::OnDepthImage, this);
                 
                 local_goal_sub = nh.subscribe("/local_goal", 1, &MotionSelectorNode::OnLocalGoal, this);
                 //value_grid_sub = nh.subscribe("/value_grid", 1, &MotionSelectorNode::OnValueGrid, this);
