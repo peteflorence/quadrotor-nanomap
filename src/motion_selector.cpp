@@ -280,7 +280,7 @@ void MotionSelector::computeProbabilityOfCollisionOneMotion(Motion motion, doubl
   Vector3 robot_position;
   Vector3 robot_position_rdf;
   Vector3 sigma_robot_position;
-  double k = 0.5;
+  double k = 0.2;
 
   for (size_t time_step_index = 0; time_step_index < num_samples_collision; time_step_index++) {
 
