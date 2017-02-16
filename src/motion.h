@@ -59,32 +59,32 @@ public:
   
 private:
   
-  Vector3 acceleration;
-  Vector3 initial_velocity;
-  Vector3 initial_acceleration;
-  Vector3 jerk;
-  Vector3 position_end_of_jerk_time;
-  Vector3 velocity_end_of_jerk_time;
+  Vector3 acceleration = Vector3(0,0,0);
+  Vector3 initial_velocity = Vector3(0,0,0);
+  Vector3 initial_acceleration = Vector3(0,0,0);
+  Vector3 jerk = Vector3(0,0,0);
+  Vector3 position_end_of_jerk_time = Vector3(0,0,0);
+  Vector3 velocity_end_of_jerk_time = Vector3(0,0,0);
 
-  Vector3 acceleration_laser;
-  Vector3 initial_velocity_laser;
-  Vector3 initial_acceleration_laser;
-  Vector3 jerk_laser;
-  Vector3 position_end_of_jerk_time_laser;
-  Vector3 velocity_end_of_jerk_time_laser;
+  Vector3 acceleration_laser = Vector3(0,0,0);
+  Vector3 initial_velocity_laser = Vector3(0,0,0);
+  Vector3 initial_acceleration_laser = Vector3(0,0,0);
+  Vector3 jerk_laser = Vector3(0,0,0);
+  Vector3 position_end_of_jerk_time_laser = Vector3(0,0,0);
+  Vector3 velocity_end_of_jerk_time_laser = Vector3(0,0,0);
 
-  Vector3 acceleration_rdf;
-  Vector3 initial_velocity_rdf;
-  Vector3 initial_acceleration_rdf;
-  Vector3 jerk_rdf;
-  Vector3 position_end_of_jerk_time_rdf;
-  Vector3 velocity_end_of_jerk_time_rdf;
+  Vector3 acceleration_rdf = Vector3(0,0,0);
+  Vector3 initial_velocity_rdf = Vector3(0,0,0);
+  Vector3 initial_acceleration_rdf = Vector3(0,0,0);
+  Vector3 jerk_rdf = Vector3(0,0,0);
+  Vector3 position_end_of_jerk_time_rdf = Vector3(0,0,0);
+  Vector3 velocity_end_of_jerk_time_rdf = Vector3(0,0,0);
 
-  double a_max_horizontal;
+  double a_max_horizontal = 1.0;
   double jerk_time = 0.200;
   double stopping_factor = 0.85;
 
-  Vector3 unscaled_acceleration;
+  Vector3 unscaled_acceleration = Vector3(0,0,0);
 
 };
 

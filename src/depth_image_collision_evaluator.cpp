@@ -139,7 +139,7 @@ double DepthImageCollisionEvaluator::computeProbabilityOfCollisionNPositionsKDTr
       double denominator = std::sqrt( 248.05021344239853*(total_sigma(0))*(total_sigma(1))*(total_sigma(2)) ); // coefficient is 2pi*2pi*2pi
       double exponent = -0.5*(robot_position - depth_position).transpose() * inverse_total_sigma.cwiseProduct(robot_position - depth_position);
 
-      double probability_of_collision = volume / denominator * std::exp(exponent);
+      double probability_of_collision = volume / denominator * pow(2.71828,exponent);
 
       probability_no_collision = probability_no_collision * (1 - probability_of_collision);
     }
@@ -147,3 +147,15 @@ double DepthImageCollisionEvaluator::computeProbabilityOfCollisionNPositionsKDTr
   }
   return 0.0; // if no points in closest_pts
 }
+
+void DepthImageCollisionEvaluator::setCameraInfo(double bin, double width, double height, Matrix3 K_camera_info) {
+  if (bin < 1.0) {binning = 1.0;}
+  else {binning = bin;}
+  num_x_pixels = width / binning;
+  num_y_pixels = height / binning;
+  K = K_camera_info;
+  K /= binning;
+  K(2,2) = 1.0;
+  return;
+}
+

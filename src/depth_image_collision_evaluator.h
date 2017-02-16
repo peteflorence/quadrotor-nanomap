@@ -16,8 +16,10 @@ public:
 	DepthImageCollisionEvaluator() {
 		//K << 304.8, 0.0, 160.06, 0.0, 304.8, 119.85, 0.0, 0.0, 1.0;
                 K << 308.57684326171875, 0.0, 154.6868438720703, 0.0, 308.57684326171875, 120.21442413330078, 0.0, 0.0, 1.0;
-                K/=4.0;
+                K /= binning;
                 K(2,2) = 1.0;
+
+                R << 1,0,0,0,1,0,0,0,1;
 	}
 	
   void UpdatePointCloudPtr(pcl::PointCloud<pcl::PointXYZ>::Ptr const& xyz_cloud_new);
@@ -35,6 +37,8 @@ public:
   double computeProbabilityOfCollisionNPositionsKDTree_Laser(Vector3 const& robot_position, Vector3 const& sigma_robot_position);
   double computeProbabilityOfCollisionNPositionsKDTree(Vector3 const& robot_position, Vector3 const& sigma_robot_position, std::vector<pcl::PointXYZ> const& closest_pts);
 
+  void setCameraInfo(double bin, double width, double height, Matrix3 K_camera_info);
+
 private:
   pcl::PointCloud<pcl::PointXYZ>::Ptr xyz_cloud_ptr;
   pcl::PointCloud<pcl::PointXYZ>::Ptr xyz_laser_cloud_ptr;
@@ -42,8 +46,9 @@ private:
   Vector3 sigma_depth_point = Vector3(0.01, 0.01, 0.01);
 
   Matrix3 K;
-  double num_x_pixels = 320/4.0;
-  double num_y_pixels = 240/4.0;
+  double binning = 4.0;
+  double num_x_pixels = 320/binning;
+  double num_y_pixels = 240/binning;
 
   KDTree<double> my_kd_tree_depth_image;
   KDTree<double> my_kd_tree_laser;

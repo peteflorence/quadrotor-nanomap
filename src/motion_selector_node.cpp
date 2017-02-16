@@ -7,6 +7,7 @@
 #include <mavros_msgs/AttitudeTarget.h>
 #include <nav_msgs/OccupancyGrid.h>
 #include <sensor_msgs/PointCloud2.h>
+#include <sensor_msgs/CameraInfo.h>
 #include "fla_msgs/ProcessStatus.h"
 
 #include "tf/tf.h"
@@ -77,18 +78,17 @@ public:
 
 		    break;
 		}
+		PublishOrthoBodyTransform(0.0, 0.0); // initializes ortho_body transform to be with 0, 0 roll, pitch
 		srand ( time(NULL) ); //initialize the random seed
-
-		ROS_INFO("Finished constructing the motion selector node");
 
                 // Subscribers
 
                 pose_sub = nh.subscribe("/pose", 1, &MotionSelectorNode::OnPose, this);
                 velocity_sub = nh.subscribe("/twist", 1, &MotionSelectorNode::OnVelocity, this);
-
-
-
-                depth_image_sub = nh.subscribe("/flight/r200/points_xyz", 1, &MotionSelectorNode::OnDepthImage, this);
+                
+				camera_info_sub = nh.subscribe("depth_camera_info", 1, &MotionSelectorNode::OnCameraInfo, this);
+                depth_image_sub = nh.subscribe("depth_camera_pointcloud", 1, &MotionSelectorNode::OnDepthImage, this);
+                
                 local_goal_sub = nh.subscribe("/local_goal", 1, &MotionSelectorNode::OnLocalGoal, this);
                 //value_grid_sub = nh.subscribe("/value_grid", 1, &MotionSelectorNode::OnValueGrid, this);
                 laser_scan_sub = nh.subscribe("/laserscan_to_pointcloud/cloud2_out", 1, &MotionSelectorNode::OnScan, this);
@@ -98,11 +98,31 @@ public:
                 carrot_pub = nh.advertise<visualization_msgs::Marker>( "carrot_marker", 0 );
                 gaussian_pub = nh.advertise<visualization_msgs::Marker>( "gaussian_visualization", 0 );
                 attitude_thrust_pub = nh.advertise<mavros_msgs::AttitudeTarget>("/mux_input_1", 1);
-                //attitude_setpoint_visualization_pub = nh.advertise<geometry_msgs::PoseStamped>("attitude_setpoint", 1);
+                attitude_setpoint_visualization_pub = nh.advertise<geometry_msgs::PoseStamped>("attitude_setpoint", 1);
                 status_pub = nh.advertise<fla_msgs::ProcessStatus>("/globalstatus", 0);
 
 
 
+	}
+
+	bool got_camera_info = false;
+	void OnCameraInfo(const sensor_msgs::CameraInfo msg) {
+		if (got_camera_info) {
+			return;
+		}
+		double height = msg.height;
+		double width = msg.width;
+		Matrix3 K_camera_info;
+		K_camera_info << msg.K[0], msg.K[1], msg.K[2], msg.K[3], msg.K[4], msg.K[5], msg.K[6], msg.K[7], msg.K[8];
+		if (msg.binning_x != msg.binning_y) { std::cout << "WARNING: Binning isn't same for camera info" << std::endl;}
+		double bin = msg.binning_x;
+		DepthImageCollisionEvaluator* depth_image_collision_ptr = motion_selector.GetDepthImageCollisionEvaluatorPtr();
+		if (depth_image_collision_ptr != nullptr) {
+			depth_image_collision_ptr->setCameraInfo(bin, width, height, K_camera_info);
+			got_camera_info = true;
+			ROS_WARN_THROTTLE(1.0, "Received camera info");
+		}
+		depth_sensor_frame = msg.header.frame_id;
 	}
 
 	void SetThrustForLibrary(double thrust) {
@@ -135,6 +155,10 @@ public:
 	}
 
 	void ReactToSampledPointCloud() {
+		if (!got_camera_info) {
+			ROS_WARN_THROTTLE(1.0, "Haven't received camera info yet");
+		}
+
 		auto t1 = std::chrono::high_resolution_clock::now();
 		mutex.lock();
 		motion_selector.computeBestEuclideanMotion(carrot_ortho_body_frame, best_traj_index, desired_acceleration);
@@ -415,13 +439,25 @@ private:
 		SetPose(pose.pose.position.x, pose.pose.position.y, pose.pose.position.z, yaw);
 		mutex.unlock();
 
-		// Publish WE ARE ALIVE
+		PublishHealthStatus();
+	}
+
+	void PublishHealthStatus() {
+
 		fla_msgs::ProcessStatus msg;
 		msg.id = 21; // 21 is motion_primitives status_id
 		msg.pid = getpid();
+
 		msg.status = fla_msgs::ProcessStatus::READY;
 		msg.arg = 0;
+
+		if (!got_camera_info) {
+			msg.status = fla_msgs::ProcessStatus::ALARM;
+			msg.arg = 1;  
+		}
+		
 		status_pub.publish(msg);
+
 	}
 
 	void SetPose(double x, double y, double z, double yaw) {
@@ -472,23 +508,29 @@ private:
 
 	Vector3 transformOrthoBodyIntoRDFFrame(Vector3 const& ortho_body_vector) {
 		geometry_msgs::TransformStamped tf;
+		if (!got_camera_info) {
+			return Vector3(0,0,0);
+		}
     	try {
-     		tf = tf_buffer_.lookupTransform("r200_depth_optical_frame", "ortho_body", 
+     		tf = tf_buffer_.lookupTransform(depth_sensor_frame, "ortho_body", 
                                     ros::Time(0), ros::Duration(1/30.0));
    		} catch (tf2::TransformException &ex) {
      	 	ROS_ERROR("ID 4 %s", ex.what());
       	return Vector3(0,0,0);
     	}
     	geometry_msgs::PoseStamped pose_ortho_body_vector = PoseFromVector3(ortho_body_vector, "ortho_body");
-    	geometry_msgs::PoseStamped pose_vector_rdf_frame = PoseFromVector3(Vector3(0,0,0), "r200_depth_optical_frame");
+    	geometry_msgs::PoseStamped pose_vector_rdf_frame = PoseFromVector3(Vector3(0,0,0), depth_sensor_frame);
     	tf2::doTransform(pose_ortho_body_vector, pose_vector_rdf_frame, tf);
     	return VectorFromPose(pose_vector_rdf_frame);
 	}
 
 	Matrix3 GetOrthoBodyToRDFRotationMatrix() {
 		geometry_msgs::TransformStamped tf;
+		if (!got_camera_info) {
+			return Matrix3();
+		}
     	try {
-     		tf = tf_buffer_.lookupTransform("r200_depth_optical_frame", "ortho_body", 
+     		tf = tf_buffer_.lookupTransform(depth_sensor_frame, "ortho_body", 
                                     ros::Time(0), ros::Duration(1/30.0));
    		} catch (tf2::TransformException &ex) {
      	 	ROS_ERROR("ID 5 %s", ex.what());
@@ -591,11 +633,12 @@ private:
 		if (depth_image_collision_ptr != nullptr) {
 
 			//sensor_msgs::PointCloud2ConstPtr laser_point_cloud_msg_ptr(laser_point_cloud_msg);
+			
 			pcl::PointCloud<pcl::PointXYZ>::Ptr ortho_body_cloud(new pcl::PointCloud<pcl::PointXYZ>);
 		    TransformToOrthoBodyPointCloud("laser", laser_point_cloud_msg, ortho_body_cloud);
 
 		    if (!use_3d_library) {
-		    	ProjectOrthoBodyLaserPointCloud(ortho_body_cloud);
+		     	ProjectOrthoBodyLaserPointCloud(ortho_body_cloud);
 		    }
 
 			depth_image_collision_ptr->UpdateLaserPointCloudPtr(ortho_body_cloud);
@@ -639,17 +682,82 @@ private:
 	// T = period
         double A_dolphin = 0.5;
         double T_dolphin = 3.0;
+        double dolphin_acceleration_threshold = 2.0;
+        double cooldown_duration = 3.0;
+
+        double time_of_last_dolphin_query = 0;
+        bool dolphin_initialized = false;
+        double time_of_start_cooldown = 0;
+
+        double dolphin_offset = 0.0;
+
+        size_t cooldown_hit_counter = 0;
+        size_t cooldown_hit_threshold = 20;
+        bool in_cooldown = false;
+
+
+    // John-style Dolphin
+
+    // if aggressive action chosen
+    // dolphin cooldown timer = 0
+
+    //if timer > dolphin_cooldown_time 
+    	//dolphin_offset = sin(t)
+    //else
+    	//dolphin_offset *= 0.95;
+    	//reset dolphin phase 
+
+
 	double DolphinStrokeDetermineAltitude(double speed) {
-		
-		// Do not dolphin stroke if not near top speed
-		if (speed < soft_top_speed_max * 0.1) {
+		if (!dolphin_initialized) {
+			dolphin_initialized = true;
 			time_of_start_dolphin_stroke = ros::Time::now().toSec();
+			time_of_start_cooldown = ros::Time::now().toSec();
 			return flight_altitude;
-		} 
+		}
 
-		double t = ros::Time::now().toSec() - time_of_start_dolphin_stroke;
+		double time_now = ros::Time::now().toSec();
 
-		return A_dolphin * cos(t * 2 * M_PI / T_dolphin) + flight_altitude;
+		if (desired_acceleration.norm() > dolphin_acceleration_threshold) {
+			cooldown_hit_counter++;
+			if (cooldown_hit_counter > cooldown_hit_threshold) {
+				cooldown_hit_counter = 0;
+				time_of_start_cooldown = time_now;
+				in_cooldown = true;	
+			}
+		}
+		else {
+			if (cooldown_hit_counter <= 1) {
+				cooldown_hit_counter = 0;
+			}
+			else {
+				cooldown_hit_counter--;
+			}
+		}
+		
+		if ( (time_now - time_of_start_cooldown) > cooldown_duration) {
+			if (in_cooldown) {
+				in_cooldown = false;
+				time_of_start_dolphin_stroke = time_now;
+			}
+			double time_since_start_dolphin = time_now - time_of_start_dolphin_stroke;
+			dolphin_offset = A_dolphin * sin(time_since_start_dolphin * 2 * M_PI / T_dolphin);
+
+		}
+		else {
+			if (dolphin_offset > 0) {dolphin_offset = dolphin_offset - 0.01;}
+			else {dolphin_offset = dolphin_offset + 0.01;}
+		}
+
+		double ans = dolphin_offset + flight_altitude;
+
+		geometry_msgs::PoseStamped pose;
+		pose.pose.position.z = ans;
+		pose.header.stamp = ros::Time::now();
+		pose.header.frame_id = "world";
+		attitude_setpoint_visualization_pub.publish(pose);
+
+		return ans;
 	}
 
 
@@ -711,10 +819,10 @@ private:
 
 	  	pcl_ros::transformPointCloud(transform_eigen, *msg, msg_out);
 
-		pcl::PCLPointCloud2* cloud2 = new pcl::PCLPointCloud2; 
-		pcl_conversions::toPCL(msg_out, *cloud2);
+		pcl::PCLPointCloud2 cloud2;
+		pcl_conversions::toPCL(msg_out, cloud2);
 		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-		pcl::fromPCLPointCloud2(*cloud2,*cloud);
+		pcl::fromPCLPointCloud2(cloud2,*cloud);
 
 		cloud_out = cloud;
 	}
@@ -732,7 +840,7 @@ private:
 				depth_image_collision_ptr->UpdateRotationMatrix(R);
 				if(use_depth_image) {
 					pcl::PointCloud<pcl::PointXYZ>::Ptr ortho_body_cloud(new pcl::PointCloud<pcl::PointXYZ>);
-		    		TransformToOrthoBodyPointCloud("r200_depth_optical_frame", point_cloud_msg, ortho_body_cloud);
+		    		TransformToOrthoBodyPointCloud(depth_sensor_frame, point_cloud_msg, ortho_body_cloud);
 					depth_image_collision_ptr->UpdatePointCloudPtr(ortho_body_cloud);
 				}
 				mutex.unlock();
@@ -817,6 +925,7 @@ private:
 	}
 
 
+	ros::Subscriber camera_info_sub;
 	ros::Subscriber pose_sub;
 	ros::Subscriber velocity_sub;
 	ros::Subscriber depth_image_sub;
@@ -830,6 +939,8 @@ private:
 	ros::Publisher attitude_thrust_pub;
 	ros::Publisher attitude_setpoint_visualization_pub;
 	ros::Publisher status_pub;
+
+	std::string depth_sensor_frame = "depth_sensor";
 
 	std::vector<ros::Publisher> action_paths_pubs;
 	tf::TransformListener listener;
@@ -845,16 +956,13 @@ private:
 
 	Eigen::Vector4d pose_x_y_z_yaw;
 
-	Eigen::Matrix<Scalar, Eigen::Dynamic, 1> sampling_time_vector;
-	size_t num_samples;
-
 	std::mutex mutex;
 
 	Vector3 carrot_world_frame;
 	Vector3 carrot_ortho_body_frame = Vector3(0,0,0);
 
 	size_t best_traj_index = 0;
-	Vector3 desired_acceleration;
+	Vector3 desired_acceleration = Vector3(0,0,0);
 
 	MotionSelector motion_selector;
 	AttitudeGenerator attitude_generator;
@@ -868,8 +976,7 @@ private:
 	double soft_top_speed_max = 0.0;
 	bool use_depth_image = true;
 	bool use_3d_library = false;
-	double flight_altitude;
-
+	double flight_altitude = 1.0;
 
 	bool executing_e_stop = false;
 	double begin_e_stop_time = 0.0;
@@ -877,9 +984,8 @@ private:
 	double max_e_stop_pitch_degrees = 60.0;
 
 	double laser_z_below_project_up = -0.5;
-
-	double time_of_start_dolphin_stroke;
-	double speed = 0;
+	double time_of_start_dolphin_stroke = 0.0;
+	double speed = 0.0;
 
 	enum StatusArg {
 			NOMINAL = 0
@@ -900,7 +1006,6 @@ int main(int argc, char* argv[]) {
 
 	MotionSelectorNode motion_selector_node;
 
-	std::cout << "Got through to here" << std::endl;
 	ros::Rate spin_rate(100);
 
 	auto t1 = std::chrono::high_resolution_clock::now();

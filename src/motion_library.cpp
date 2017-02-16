@@ -17,9 +17,9 @@ void MotionLibrary::InitializeLibrary(bool use_3d_library, double acceleration_i
 	motions.push_back(Motion( acceleration, zero_initial_velocity ));
 
 	// Then build up more motions by sampling over accelerations
-	std::vector<double> horizontal_accelerations = {initial_max_acceleration, 0.6*initial_max_acceleration, 0.15*initial_max_acceleration};
+	std::vector<double> horizontal_accelerations = {initial_max_acceleration, 0.8*initial_max_acceleration, 0.6*initial_max_acceleration, 0.4*initial_max_acceleration, 0.15*initial_max_acceleration};
 	std::vector<double> vertical_accelerations = {0.0};
-	size_t num_samples_around_circle = 8;
+	size_t num_samples_around_circle = 16;
 
 	if (use_3d_library) {
 		vertical_accelerations.push_back(-2.0);
@@ -106,7 +106,7 @@ size_t MotionLibrary::getNumMotions() {
 
 Vector3 MotionLibrary::getSigmaAtTime(double const& t) {
 	//return Vector3(0.01,0.01,0.01) + t*0.2*(Vector3(0.5,0.5,0.5) + 0.5*(initial_velocity.array().abs()).matrix());
-	return Vector3(0.01,0.01,0.01) + t*(Vector3(0.5,0.5,0.4) + 0.1*Vector3(1.0,1.0,0.0)*(initial_velocity.norm()) );
+	return Vector3(0.05,0.05,0.01) + t*(Vector3(0.5,0.5,0.4) + 0.1*Vector3(1.0,1.0,0.0)*(initial_velocity.norm()) );
 };
 
 Vector3 MotionLibrary::getLASERSigmaAtTime(double const& t) {
