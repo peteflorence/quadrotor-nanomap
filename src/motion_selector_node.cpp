@@ -692,7 +692,7 @@ private:
         double dolphin_offset = 0.0;
 
         size_t cooldown_hit_counter = 0;
-        size_t cooldown_hit_threshold = 5;
+        size_t cooldown_hit_threshold = 20;
         bool in_cooldown = false;
 
 
