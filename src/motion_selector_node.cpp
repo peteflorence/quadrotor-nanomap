@@ -691,6 +691,8 @@ private:
 
         double dolphin_offset = 0.0;
 
+        size_t cooldown_hit_counter = 0;
+        size_t cooldown_hit_threshold = 5;
         bool in_cooldown = false;
 
 
@@ -717,8 +719,20 @@ private:
 		double time_now = ros::Time::now().toSec();
 
 		if (desired_acceleration.norm() > dolphin_acceleration_threshold) {
-			time_of_start_cooldown = time_now;
-			in_cooldown = true;
+			cooldown_hit_counter++;
+			if (cooldown_hit_counter > cooldown_hit_threshold) {
+				cooldown_hit_counter = 0;
+				time_of_start_cooldown = time_now;
+				in_cooldown = true;	
+			}
+		}
+		else {
+			if (cooldown_hit_counter <= 1) {
+				cooldown_hit_counter = 0;
+			}
+			else {
+				cooldown_hit_counter--;
+			}
 		}
 		
 		if ( (time_now - time_of_start_cooldown) > cooldown_duration) {
