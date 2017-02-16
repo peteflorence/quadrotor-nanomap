@@ -17,7 +17,7 @@
   <arg name="A_dolphin" default="0.4"/>
   <arg name="T_dolphin" default="3.0"/>
 
-  <arg name="use_xtion" default="false" /> <!-- otherwise use r200 -->
+  <arg name="use_xtion" default="true" /> <!-- otherwise use r200 -->
 
   <arg name="r200_depth_camera_info_topic" default="/flight/r200/depth_red/camera_info" />
   <arg name="r200_depth_camera_pointcloud_topic" default="/flight/r200/points_xyz" />
