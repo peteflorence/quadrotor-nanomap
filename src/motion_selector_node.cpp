@@ -9,6 +9,7 @@
 #include <sensor_msgs/PointCloud2.h>
 #include <sensor_msgs/CameraInfo.h>
 #include "fla_msgs/ProcessStatus.h"
+#include "fla_msgs/FlightCommand.h"
 
 #include "tf/tf.h"
 #include <tf/transform_listener.h>
@@ -91,7 +92,7 @@ public:
                 
                 local_goal_sub = nh.subscribe("/local_goal", 1, &MotionSelectorNode::OnLocalGoal, this);
                 //value_grid_sub = nh.subscribe("/value_grid", 1, &MotionSelectorNode::OnValueGrid, this);
-                laser_scan_sub = nh.subscribe("/laserscan_to_pointcloud/cloud2_out", 1, &MotionSelectorNode::OnScan, this);
+                //laser_scan_sub = nh.subscribe("/laserscan_to_pointcloud/cloud2_out", 1, &MotionSelectorNode::OnScan, this);
 
 
                 // Publishers
@@ -289,6 +290,19 @@ public:
 	}
 
 private:
+
+	bool motion_primitives_live = false;
+	void OnEvent(const fla_msgs::FlightCommand& msg)  {
+	   if (msg.command == fla_msgs::FlightCommand::CMD_GO){
+	        ROS_INFO("GOT GO COMMAND");
+			motion_primitives_live = true;
+
+			ROS_INFO("Starting");	
+		}
+		else{
+			motion_primitives_live = false;
+		}	
+	}
 
 
 	void SetYawFromMotion() {
