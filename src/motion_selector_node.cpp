@@ -262,18 +262,21 @@ public:
 	}
 
 	void PublishCurrentAttitudeSetpoint() {
-		mutex.lock();
 		if (use_3d_library) {
 			//AltitudeFeedbackOnBestMotion();
 			// pass to acl_fsw instead
+			mutex.lock();
 			PassToOuterLoop(desired_acceleration);
+			mutex.unlock();
 		}
 		else {
+			mutex.lock();
 			Vector3 attitude_thrust_desired = attitude_generator.generateDesiredAttitudeThrust(desired_acceleration);
+			mutex.unlock();
 			SetThrustForLibrary(attitude_thrust_desired(2));
 			PublishAttitudeSetpoint(attitude_thrust_desired);
 		}
-		mutex.unlock();
+		
 	}
 
 	void AltitudeFeedbackOnBestMotion() {
@@ -310,7 +313,8 @@ private:
 		quad_goal.accel.y = desired_acceleration_setpoint(1);
 		quad_goal.accel.z = desired_acceleration_setpoint(2);
 
-		quad_goal.yaw = 0.0;
+		UpdateYaw();
+		quad_goal.yaw = -set_bearing_azimuth_degrees*M_PI/180.0;
 
 		quad_goal.jerk.x = 0.0;
 		quad_goal.jerk.y = 0.0;
@@ -893,19 +897,7 @@ private:
 		}
 	}
 
-	void PublishAttitudeSetpoint(Vector3 const& roll_pitch_thrust) { 
-
-		using namespace Eigen;
-
-		mavros_msgs::AttitudeTarget setpoint_msg;
-		setpoint_msg.header.stamp = ros::Time::now();
-		setpoint_msg.type_mask = mavros_msgs::AttitudeTarget::IGNORE_ROLL_RATE 
-			| mavros_msgs::AttitudeTarget::IGNORE_PITCH_RATE
-			| mavros_msgs::AttitudeTarget::IGNORE_YAW_RATE
-			;
-		
-		mutex.lock();
-
+	void UpdateYaw() {
 		// // Limit size of bearing errors
 		double bearing_error_cap = 30;
 		double actual_bearing_azimuth_degrees = -pose_global_yaw * 180.0/M_PI;
@@ -948,13 +940,28 @@ private:
 		if (set_bearing_azimuth_degrees < -180.0) {
 			set_bearing_azimuth_degrees += 360.0;
 		}
+	}
+
+	void PublishAttitudeSetpoint(Vector3 const& roll_pitch_thrust) { 
+
+		using namespace Eigen;
+
+		mavros_msgs::AttitudeTarget setpoint_msg;
+		setpoint_msg.header.stamp = ros::Time::now();
+		setpoint_msg.type_mask = mavros_msgs::AttitudeTarget::IGNORE_ROLL_RATE 
+			| mavros_msgs::AttitudeTarget::IGNORE_PITCH_RATE
+			| mavros_msgs::AttitudeTarget::IGNORE_YAW_RATE
+			;
+
+		mutex.lock();
+		UpdateYaw();
 
 		Matrix3f m;
 		m =AngleAxisf(-set_bearing_azimuth_degrees*M_PI/180.0, Vector3f::UnitZ())
 		* AngleAxisf(roll_pitch_thrust(1), Vector3f::UnitY())
 		* AngleAxisf(-roll_pitch_thrust(0), Vector3f::UnitX());
-
 		mutex.unlock();
+		
 
 		Quaternionf q(m);
 
