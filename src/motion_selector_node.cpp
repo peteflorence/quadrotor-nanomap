@@ -8,6 +8,7 @@
 #include <nav_msgs/OccupancyGrid.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <sensor_msgs/CameraInfo.h>
+#include <std_msgs/Float64.h>
 #include "fla_msgs/ProcessStatus.h"
 
 #include "tf/tf.h"
@@ -83,26 +84,31 @@ public:
 
                 // Subscribers
 
-                pose_sub = nh.subscribe("/pose", 1, &MotionSelectorNode::OnPose, this);
-                velocity_sub = nh.subscribe("/twist", 1, &MotionSelectorNode::OnVelocity, this);
-                
-				camera_info_sub = nh.subscribe("depth_camera_info", 1, &MotionSelectorNode::OnCameraInfo, this);
-                depth_image_sub = nh.subscribe("depth_camera_pointcloud", 1, &MotionSelectorNode::OnDepthImage, this);
-                
-                local_goal_sub = nh.subscribe("/local_goal", 1, &MotionSelectorNode::OnLocalGoal, this);
-                //value_grid_sub = nh.subscribe("/value_grid", 1, &MotionSelectorNode::OnValueGrid, this);
-                laser_scan_sub = nh.subscribe("/laserscan_to_pointcloud/cloud2_out", 1, &MotionSelectorNode::OnScan, this);
+        pose_sub = nh.subscribe("/pose", 1, &MotionSelectorNode::OnPose, this);
+        velocity_sub = nh.subscribe("/twist", 1, &MotionSelectorNode::OnVelocity, this);
+        max_speed_sub = nh.subscribe("/max_speed", 1, &MotionSelectorNode::OnMaxSpeed, this);
+		camera_info_sub = nh.subscribe("depth_camera_info", 1, &MotionSelectorNode::OnCameraInfo, this);
+        depth_image_sub = nh.subscribe("depth_camera_pointcloud", 1, &MotionSelectorNode::OnDepthImage, this);
+        
+        local_goal_sub = nh.subscribe("/local_goal", 1, &MotionSelectorNode::OnLocalGoal, this);
+        //value_grid_sub = nh.subscribe("/value_grid", 1, &MotionSelectorNode::OnValueGrid, this);
+        laser_scan_sub = nh.subscribe("/laserscan_to_pointcloud/cloud2_out", 1, &MotionSelectorNode::OnScan, this);
 
 
-                // Publishers
-                carrot_pub = nh.advertise<visualization_msgs::Marker>( "carrot_marker", 0 );
-                gaussian_pub = nh.advertise<visualization_msgs::Marker>( "gaussian_visualization", 0 );
-                attitude_thrust_pub = nh.advertise<mavros_msgs::AttitudeTarget>("/mux_input_1", 1);
-                attitude_setpoint_visualization_pub = nh.advertise<geometry_msgs::PoseStamped>("attitude_setpoint", 1);
-                status_pub = nh.advertise<fla_msgs::ProcessStatus>("/globalstatus", 0);
+        // Publishers
+        carrot_pub = nh.advertise<visualization_msgs::Marker>( "carrot_marker", 0 );
+        gaussian_pub = nh.advertise<visualization_msgs::Marker>( "gaussian_visualization", 0 );
+        attitude_thrust_pub = nh.advertise<mavros_msgs::AttitudeTarget>("/mux_input_1", 1);
+        attitude_setpoint_visualization_pub = nh.advertise<geometry_msgs::PoseStamped>("attitude_setpoint", 1);
+        status_pub = nh.advertise<fla_msgs::ProcessStatus>("/globalstatus", 0);
 
 
 
+	}
+
+	void OnMaxSpeed(const std_msgs::Float64 msg) {
+		ROS_INFO("Got new top speed: %f", msg.data);
+		soft_top_speed_max = msg.data;
 	}
 
 	bool got_camera_info = false;
@@ -933,6 +939,7 @@ private:
 	ros::Subscriber local_goal_sub;
 	ros::Subscriber value_grid_sub;
 	ros::Subscriber laser_scan_sub;
+	ros::Subscriber max_speed_sub;
 
 	ros::Publisher carrot_pub;
 	ros::Publisher gaussian_pub;
