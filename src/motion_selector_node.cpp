@@ -612,10 +612,12 @@ private:
 		attitude_generator.setZvelocity(twist.twist.linear.z);
 		Vector3 velocity_world_frame(twist.twist.linear.x, twist.twist.linear.y, twist.twist.linear.z);
 		Vector3 velocity_ortho_body_frame = TransformWorldToOrthoBody(velocity_world_frame);
-		velocity_ortho_body_frame(2) = 0.0;  // WARNING for 2D only
+		if (!use_3d_library) {
+			velocity_ortho_body_frame(2) = 0.0;  // WARNING for 2D only
+		}
 		mutex.lock();
 		UpdateMotionLibraryVelocity(velocity_ortho_body_frame);
-		speed = velocity_ortho_body_frame.norm();
+		speed = velocity_ortho_body_frame.norm();											
 		//UpdateTimeHorizon(speed);
 		UpdateMaxAcceleration(speed);
 		mutex.unlock();
