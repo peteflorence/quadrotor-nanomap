@@ -30,6 +30,8 @@
 #include <stdlib.h>
 #include <chrono>
 
+#include "acl_fsw/QuadGoal.h"
+
 #include "motion_selector.h"
 #include "attitude_generator.h"
 #include "motion_visualizer.h"
@@ -93,6 +95,7 @@ public:
                 local_goal_sub = nh.subscribe("/local_goal", 1, &MotionSelectorNode::OnLocalGoal, this);
                 //value_grid_sub = nh.subscribe("/value_grid", 1, &MotionSelectorNode::OnValueGrid, this);
                 //laser_scan_sub = nh.subscribe("/laserscan_to_pointcloud/cloud2_out", 1, &MotionSelectorNode::OnScan, this);
+                command_sub = nh.subscribe("/flight/command", 1, &MotionSelectorNode::OnCommand, this);
 
 
                 // Publishers
@@ -101,6 +104,7 @@ public:
                 attitude_thrust_pub = nh.advertise<mavros_msgs::AttitudeTarget>("/mux_input_1", 1);
                 attitude_setpoint_visualization_pub = nh.advertise<geometry_msgs::PoseStamped>("attitude_setpoint", 1);
                 status_pub = nh.advertise<fla_msgs::ProcessStatus>("/globalstatus", 0);
+                quad_goal_pub = nh.advertise<acl_fsw::QuadGoal>("/FLA_ACL02/goal", 1);
 
 
 
@@ -260,12 +264,16 @@ public:
 	void PublishCurrentAttitudeSetpoint() {
 		mutex.lock();
 		if (use_3d_library) {
-			AltitudeFeedbackOnBestMotion();
+			//AltitudeFeedbackOnBestMotion();
+			// pass to acl_fsw instead
+			PassToOuterLoop(desired_acceleration);
 		}
-		Vector3 attitude_thrust_desired = attitude_generator.generateDesiredAttitudeThrust(desired_acceleration);
-		SetThrustForLibrary(attitude_thrust_desired(2));
+		else {
+			Vector3 attitude_thrust_desired = attitude_generator.generateDesiredAttitudeThrust(desired_acceleration);
+			SetThrustForLibrary(attitude_thrust_desired(2));
+			PublishAttitudeSetpoint(attitude_thrust_desired);
+		}
 		mutex.unlock();
-		PublishAttitudeSetpoint(attitude_thrust_desired);
 	}
 
 	void AltitudeFeedbackOnBestMotion() {
@@ -291,8 +299,28 @@ public:
 
 private:
 
+	void PassToOuterLoop(Vector3 desired_acceleration_setpoint) {
+		if (!motion_primitives_live) {return;}
+		// build up QuadGoal
+		acl_fsw::QuadGoal quad_goal;
+		quad_goal.cut_power = false;
+		quad_goal.xy_mode = acl_fsw::QuadGoal::MODE_ACCEL;
+		quad_goal.z_mode = acl_fsw::QuadGoal::MODE_ACCEL;
+		quad_goal.accel.x = desired_acceleration_setpoint(0);
+		quad_goal.accel.y = desired_acceleration_setpoint(1);
+		quad_goal.accel.z = desired_acceleration_setpoint(2);
+
+		quad_goal.yaw = 0.0;
+
+		quad_goal.jerk.x = 0.0;
+		quad_goal.jerk.y = 0.0;
+		quad_goal.jerk.z = 0.0;
+
+		quad_goal_pub.publish(quad_goal);
+	}
+
 	bool motion_primitives_live = false;
-	void OnEvent(const fla_msgs::FlightCommand& msg)  {
+	void OnCommand(const fla_msgs::FlightCommand& msg)  {
 	   if (msg.command == fla_msgs::FlightCommand::CMD_GO){
 	        ROS_INFO("GOT GO COMMAND");
 			motion_primitives_live = true;
@@ -947,12 +975,14 @@ private:
 	ros::Subscriber local_goal_sub;
 	ros::Subscriber value_grid_sub;
 	ros::Subscriber laser_scan_sub;
+	ros::Subscriber command_sub;
 
 	ros::Publisher carrot_pub;
 	ros::Publisher gaussian_pub;
 	ros::Publisher attitude_thrust_pub;
 	ros::Publisher attitude_setpoint_visualization_pub;
 	ros::Publisher status_pub;
+	ros::Publisher quad_goal_pub;
 
 	std::string depth_sensor_frame = "depth_sensor";
 
