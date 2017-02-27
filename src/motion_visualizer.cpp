@@ -78,7 +78,7 @@ void MotionVisualizer::drawAll() {
 		Vector3 sigma;
 		for (size_t sample = 0; sample < num_samples; sample++) {
 			action_samples_msg.poses.push_back(PoseFromVector3(sample_points_xyz_over_time.row(sample), drawing_frame));
-			sigma = motion_library_ptr->getSigmaAtTime(sampling_time_vector(sample));
+			sigma = motion_library_ptr->getSigmaAtTime(sampling_time_vector(sample))*(1+0.2*motion_library_ptr->getMotionFromIndex(motion_index).getVelocity(sampling_time_vector(sample)).norm());
 			if (motion_index == *best_traj_index) {
 				drawGaussianPropagation(sample, sample_points_xyz_over_time.row(sample), sigma);
 			}

@@ -280,16 +280,15 @@ void MotionSelector::computeProbabilityOfCollisionOneMotion(Motion motion, doubl
   Vector3 robot_position;
   Vector3 robot_position_rdf;
   Vector3 sigma_robot_position;
+  double k = 0.2;
 
   for (size_t time_step_index = 0; time_step_index < num_samples_collision; time_step_index++) {
 
-    sigma_robot_position = 0.1*motion_library.getSigmaAtTime(collision_sampling_time_vector(time_step_index)); 
+    sigma_robot_position = 0.1*motion_library.getSigmaAtTime(collision_sampling_time_vector(time_step_index))*(1 + k*motion.getVelocity(collision_sampling_time_vector(time_step_index)).norm()); 
     robot_position = motion.getPosition(collision_sampling_time_vector(time_step_index));
     probability_no_collision_one_step = 1 - depth_image_collision_evaluator.computeProbabilityOfCollisionNPositionsKDTree_Laser(robot_position, sigma_robot_position);
     probability_no_collision_hokuyo = probability_no_collision_hokuyo * probability_no_collision_one_step;
 
-    sigma_robot_position = 0.1*motion_library.getSigmaAtTime(collision_sampling_time_vector(time_step_index)); 
-    robot_position = motion.getPosition(collision_sampling_time_vector(time_step_index));
     robot_position_rdf = motion.getPositionRDF(collision_sampling_time_vector(time_step_index));
     
     probability_of_collision_one_step_one_depth = depth_image_collision_evaluator.computeProbabilityOfCollisionNPositionsKDTree_DepthImage(robot_position, sigma_robot_position);
