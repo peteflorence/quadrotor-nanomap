@@ -18,8 +18,8 @@
     <rosparam command="load" if="$(arg load_params)" file="$(find motion_primitives)/cfg/motion_selector.yaml" />
     <remap from="~local_goal_topic" to="/move_base_simple/goal" unless="$(arg use_global_planner)"/>
 
-    <remap from="~depth_camera_info_topic" to="$(arg r200_depth_camera_info_topic)" unless="$(arg use_xtion)"/>
-    <remap from="~depth_camera_pointcloud_topic" to="$(arg r200_depth_camera_pointcloud_topic)" unless="$(arg use_xtion)"/>
+    <remap from="~depth_camera_info_topic" to="$(arg r200_depth_camera_info_topic)" if="$(arg use_realsense)"/>
+    <remap from="~depth_camera_pointcloud_topic" to="$(arg r200_depth_camera_pointcloud_topic)" if="$(arg use_realsense)"/>
 
     <remap from="~depth_camera_info_topic" to="$(arg xtion_depth_camera_info_topic)" if="$(arg use_xtion)"/>
     <remap from="~depth_camera_pointcloud_topic" to="$(arg xtion_depth_camera_pointcloud_topic)" if="$(arg use_xtion)"/>
