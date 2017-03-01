@@ -302,25 +302,47 @@ public:
 
 private:
 
+	double yaw_spin;
 	void PassToOuterLoop(Vector3 desired_acceleration_setpoint) {
 		if (!motion_primitives_live) {return;}
-		// build up QuadGoal
-		acl_fsw::QuadGoal quad_goal;
-		quad_goal.cut_power = false;
-		quad_goal.xy_mode = acl_fsw::QuadGoal::MODE_ACCEL;
-		quad_goal.z_mode = acl_fsw::QuadGoal::MODE_ACCEL;
-		quad_goal.accel.x = desired_acceleration_setpoint(0);
-		quad_goal.accel.y = desired_acceleration_setpoint(1);
-		quad_goal.accel.z = desired_acceleration_setpoint(2);
 
-		UpdateYaw();
-		quad_goal.yaw = -set_bearing_azimuth_degrees*M_PI/180.0;
+		MotionLibrary* motion_library_ptr = motion_selector.GetMotionLibraryPtr();
+		if (motion_library_ptr != nullptr) {
 
-		quad_goal.jerk.x = 0.0;
-		quad_goal.jerk.y = 0.0;
-		quad_goal.jerk.z = 0.0;
+			Motion best_motion = motion_library_ptr->getMotionFromIndex(best_traj_index);
 
-		quad_goal_pub.publish(quad_goal);
+			// build up QuadGoal
+			acl_fsw::QuadGoal quad_goal;
+			quad_goal.cut_power = false;
+			quad_goal.xy_mode = acl_fsw::QuadGoal::MODE_POS;
+			quad_goal.z_mode = acl_fsw::QuadGoal::MODE_POS;
+
+			Vector3 pos = TransformOrthoBodyToWorld(best_motion.getPosition(0.01));
+			Vector3 vel = TransformOrthoBodyToWorld(best_motion.getVelocity(0.01));
+			Vector3 accel = TransformOrthoBodyToWorld(best_motion.getAcceleration());
+			Vector3 jerk = TransformOrthoBodyToWorld(best_motion.getJerk());
+
+			// quad_goal.jerk.x = jerk(0);
+			// quad_goal.jerk.y = jerk(1);
+			// quad_goal.jerk.z = jerk(2);
+			//quad_goal.accel.x = accel(0);
+			//quad_goal.accel.y = accel(1);
+			//quad_goal.accel.z = accel(2);
+			// quad_goal.vel.x = vel(0);
+			// quad_goal.vel.y = vel(1);
+			// quad_goal.vel.z = vel(2);
+			quad_goal.pos.x = pos(0);
+			quad_goal.pos.y = pos(1);
+			quad_goal.pos.z = 3.0;
+
+			//UpdateYaw();
+			//quad_goal.yaw = -set_bearing_azimuth_degrees*M_PI/180.0;
+			//quad_goal.yaw = 0;
+			quad_goal.yaw = yaw_spin;
+			yaw_spin = yaw_spin + 0.01;
+
+			quad_goal_pub.publish(quad_goal);
+		}
 	}
 
 	bool motion_primitives_live = false;
