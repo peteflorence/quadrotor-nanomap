@@ -107,7 +107,6 @@ public:
 	}
 
 	void OnMaxSpeed(const std_msgs::Float64 msg) {
-		ROS_INFO("Got new top speed: %f", msg.data);
 		soft_top_speed_max = msg.data;
 	}
 
