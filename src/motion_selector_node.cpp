@@ -179,7 +179,7 @@ public:
 			ExecuteEStop();
 		}
 	    else if (yaw_on) {
-	    	SetYawFromMotion();
+	    	//SetYawFromMotion();
 	    } 
 	    mutex.unlock();
 
@@ -302,7 +302,6 @@ public:
 
 private:
 
-	double yaw_spin;
 	void PassToOuterLoop(Vector3 desired_acceleration_setpoint) {
 		if (!motion_primitives_live) {return;}
 
@@ -336,10 +335,16 @@ private:
 			quad_goal.pos.z = 3.0;
 
 			//UpdateYaw();
-			//quad_goal.yaw = -set_bearing_azimuth_degrees*M_PI/180.0;
+			quad_goal.yaw = -set_bearing_azimuth_degrees*M_PI/180.0;
+			set_bearing_azimuth_degrees = set_bearing_azimuth_degrees+0.5;
+
+			if (set_bearing_azimuth_degrees > 180.0) {
+				set_bearing_azimuth_degrees -= 360.0;
+			}
+			if (set_bearing_azimuth_degrees < -180.0) {
+				set_bearing_azimuth_degrees += 360.0;
+			}
 			//quad_goal.yaw = 0;
-			quad_goal.yaw = yaw_spin;
-			yaw_spin = yaw_spin + 0.01;
 
 			quad_goal_pub.publish(quad_goal);
 		}
