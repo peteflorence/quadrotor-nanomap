@@ -315,7 +315,7 @@ private:
 			// build up QuadGoal
 			acl_fsw::QuadGoal quad_goal;
 			quad_goal.cut_power = false;
-			quad_goal.xy_mode = acl_fsw::QuadGoal::MODE_POS;
+			quad_goal.xy_mode = acl_fsw::QuadGoal::MODE_ACCEL;
 			quad_goal.z_mode = acl_fsw::QuadGoal::MODE_POS;
 
 			Vector3 pos = TransformOrthoBodyToWorld(best_motion.getPosition(0.01));
@@ -353,11 +353,11 @@ private:
 			quad_goal.accel.x = accel(0);
 			quad_goal.accel.y = accel(1);
 			quad_goal.accel.z = accel(2);
-			quad_goal.vel.x = vel(0);
-			quad_goal.vel.y = vel(1);
-			quad_goal.vel.z = vel(2);
-			quad_goal.pos.x = pos(0);
-			quad_goal.pos.y = pos(1);
+			//quad_goal.vel.x = vel(0);
+			//quad_goal.vel.y = vel(1);
+			//quad_goal.vel.z = vel(2);
+			//quad_goal.pos.x = pos(0);
+			//quad_goal.pos.y = pos(1);
 			quad_goal.pos.z = 3.0;
 
 			last_plan_pos = pos;
@@ -685,8 +685,8 @@ private:
 	void OnVelocity( geometry_msgs::TwistStamped const& twist) {
 		//ROS_INFO("GOT VELOCITY");
 		attitude_generator.setZvelocity(twist.twist.linear.z);
-		//Vector3 velocity_world_frame(twist.twist.linear.x, twist.twist.linear.y, twist.twist.linear.z);
-		Vector3 velocity_ortho_body_frame = RotateWorldToOrthoBody(last_plan_vel);
+		Vector3 velocity_world_frame(twist.twist.linear.x, twist.twist.linear.y, twist.twist.linear.z);
+		Vector3 velocity_ortho_body_frame = RotateWorldToOrthoBody(velocity_world_frame);
 		if (!use_3d_library) {
 			velocity_ortho_body_frame(2) = 0.0;  // WARNING for 2D only
 		}
