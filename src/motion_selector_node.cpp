@@ -316,35 +316,35 @@ private:
 			quad_goal.xy_mode = acl_fsw::QuadGoal::MODE_POS;
 			quad_goal.z_mode = acl_fsw::QuadGoal::MODE_POS;
 
-			Vector3 pos = TransformOrthoBodyToWorld(best_motion.getPosition(0.01));
-			Vector3 vel = TransformOrthoBodyToWorld(best_motion.getVelocity(0.01));
-			Vector3 accel = TransformOrthoBodyToWorld(best_motion.getAcceleration());
-			Vector3 jerk = TransformOrthoBodyToWorld(best_motion.getJerk());
+			Vector3 pos = TransformOrthoBodyToWorld(best_motion.getPosition(0.1));
+			Vector3 vel = RotateOrthoBodyToWorld(best_motion.getVelocity(0.01));
+			Vector3 accel = RotateOrthoBodyToWorld(best_motion.getAcceleration());
+			Vector3 jerk = RotateOrthoBodyToWorld(best_motion.getJerk());
 
 			// quad_goal.jerk.x = jerk(0);
-			// quad_goal.jerk.y = jerk(1);
-			// quad_goal.jerk.z = jerk(2);
-			//quad_goal.accel.x = accel(0);
-			//quad_goal.accel.y = accel(1);
-			//quad_goal.accel.z = accel(2);
-			// quad_goal.vel.x = vel(0);
-			// quad_goal.vel.y = vel(1);
-			// quad_goal.vel.z = vel(2);
+			//quad_goal.jerk.y = jerk(1);
+			//quad_goal.jerk.z = jerk(2);
+			quad_goal.accel.x = accel(0);
+			quad_goal.accel.y = accel(1);
+			quad_goal.accel.z = accel(2);
+			//quad_goal.vel.x = vel(0);
+			//quad_goal.vel.y = vel(1);
+			//quad_goal.vel.z = vel(2);
 			quad_goal.pos.x = pos(0);
 			quad_goal.pos.y = pos(1);
 			quad_goal.pos.z = 3.0;
 
 			//UpdateYaw();
-			quad_goal.yaw = -set_bearing_azimuth_degrees*M_PI/180.0;
-			set_bearing_azimuth_degrees = set_bearing_azimuth_degrees+0.5;
+			// quad_goal.yaw = -set_bearing_azimuth_degrees*M_PI/180.0;
+			// set_bearing_azimuth_degrees = set_bearing_azimuth_degrees+0.5;
 
-			if (set_bearing_azimuth_degrees > 180.0) {
-				set_bearing_azimuth_degrees -= 360.0;
-			}
-			if (set_bearing_azimuth_degrees < -180.0) {
-				set_bearing_azimuth_degrees += 360.0;
-			}
-			//quad_goal.yaw = 0;
+			// if (set_bearing_azimuth_degrees > 180.0) {
+			// 	set_bearing_azimuth_degrees -= 360.0;
+			// }
+			// if (set_bearing_azimuth_degrees < -180.0) {
+			// 	set_bearing_azimuth_degrees += 360.0;
+			// }
+			quad_goal.yaw = 0;
 
 			quad_goal_pub.publish(quad_goal);
 		}
@@ -614,7 +614,7 @@ private:
 	    return R;
 	}
 
-	Vector3 TransformWorldToOrthoBody(Vector3 const& world_frame) {
+	Vector3 RotateWorldToOrthoBody(Vector3 const& world_frame) {
 		geometry_msgs::TransformStamped tf;
 	    try {
 	      tf = tf_buffer_.lookupTransform("ortho_body", "world", 
@@ -627,6 +627,21 @@ private:
 	    Eigen::Quaternion<Scalar> quat(tf.transform.rotation.w, tf.transform.rotation.x, tf.transform.rotation.y, tf.transform.rotation.z);
 	    Matrix3 R = quat.toRotationMatrix();
 	    return R*world_frame;
+	}
+
+	Vector3 RotateOrthoBodyToWorld(Vector3 const& ortho_body_frame) {
+		geometry_msgs::TransformStamped tf;
+	    try {
+	      tf = tf_buffer_.lookupTransform("world", "ortho_body", 
+	                                    ros::Time(0), ros::Duration(1/30.0));
+	    } catch (tf2::TransformException &ex) {
+	      ROS_ERROR("ID 6 %s", ex.what());
+	      return Vector3(1,1,1);
+	    }
+
+	    Eigen::Quaternion<Scalar> quat(tf.transform.rotation.w, tf.transform.rotation.x, tf.transform.rotation.y, tf.transform.rotation.z);
+	    Matrix3 R = quat.toRotationMatrix();
+	    return R*ortho_body_frame;
 	}
 
 	void UpdateMotionLibraryVelocity(Vector3 const& velocity_ortho_body_frame) {
@@ -642,7 +657,7 @@ private:
 		//ROS_INFO("GOT VELOCITY");
 		attitude_generator.setZvelocity(twist.twist.linear.z);
 		Vector3 velocity_world_frame(twist.twist.linear.x, twist.twist.linear.y, twist.twist.linear.z);
-		Vector3 velocity_ortho_body_frame = TransformWorldToOrthoBody(velocity_world_frame);
+		Vector3 velocity_ortho_body_frame = RotateWorldToOrthoBody(velocity_world_frame);
 		if (!use_3d_library) {
 			velocity_ortho_body_frame(2) = 0.0;  // WARNING for 2D only
 		}
