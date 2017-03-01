@@ -183,7 +183,7 @@ public:
 	    } 
 	    mutex.unlock();
 
-		PublishCurrentAttitudeSetpoint();
+		//PublishCurrentAttitudeSetpoint();
 	}
 
 	void ExecuteEStop() {
@@ -302,6 +302,8 @@ public:
 
 private:
 
+	Vector3 last_plan_pos = Vector3(0,0,0);
+	Vector3 last_plan_vel = Vector3(0,0,0);
 	void PassToOuterLoop(Vector3 desired_acceleration_setpoint) {
 		if (!motion_primitives_live) {return;}
 
@@ -316,23 +318,50 @@ private:
 			quad_goal.xy_mode = acl_fsw::QuadGoal::MODE_POS;
 			quad_goal.z_mode = acl_fsw::QuadGoal::MODE_POS;
 
-			Vector3 pos = TransformOrthoBodyToWorld(best_motion.getPosition(0.1));
+			Vector3 pos = TransformOrthoBodyToWorld(best_motion.getPosition(0.01));
 			Vector3 vel = RotateOrthoBodyToWorld(best_motion.getVelocity(0.01));
 			Vector3 accel = RotateOrthoBodyToWorld(best_motion.getAcceleration());
 			Vector3 jerk = RotateOrthoBodyToWorld(best_motion.getJerk());
+			
 
-			// quad_goal.jerk.x = jerk(0);
-			//quad_goal.jerk.y = jerk(1);
-			//quad_goal.jerk.z = jerk(2);
+			// adjust for plan
+    	
+    		//actual
+    		Vector3 actual = Vector3(pose_global_x,pose_global_y,pose_global_z);
+    		// planned
+    		// add in the diff between planned and actual
+    		Vector3 diff = last_plan_pos - actual;
+    		if (diff(0)>0.3) {diff(0) = 0.0;} 
+    		if (diff(1)>0.3) {diff(1) = 0.0;} 
+    		if (diff(2)>0.3) {diff(2) = 0.0;}
+
+    		if (diff(0)<0.3) {diff(0) = -0.0;} 
+    		if (diff(1)<0.3) {diff(1) = -0.0;} 
+    		if (diff(2)<0.3) {diff(2) = -0.0;}
+    		
+    		std::cout << "------" << std::endl;
+    		std::cout << "pos " << pos << std::endl;
+    		std::cout << "last_plan_pos " << last_plan_pos << std::endl;
+    		std::cout << "actual " << actual << std::endl;
+    		std::cout << "diff " << diff << std::endl;
+
+    		//pos = pos + diff;
+
+			quad_goal.jerk.x = jerk(0);
+			quad_goal.jerk.y = jerk(1);
+			quad_goal.jerk.z = jerk(2);
 			quad_goal.accel.x = accel(0);
 			quad_goal.accel.y = accel(1);
 			quad_goal.accel.z = accel(2);
-			//quad_goal.vel.x = vel(0);
-			//quad_goal.vel.y = vel(1);
-			//quad_goal.vel.z = vel(2);
+			quad_goal.vel.x = vel(0);
+			quad_goal.vel.y = vel(1);
+			quad_goal.vel.z = vel(2);
 			quad_goal.pos.x = pos(0);
 			quad_goal.pos.y = pos(1);
 			quad_goal.pos.z = 3.0;
+
+			last_plan_pos = pos;
+			last_plan_vel = vel;
 
 			UpdateYaw();
 			quad_goal.yaw = -set_bearing_azimuth_degrees*M_PI/180.0;
@@ -656,8 +685,8 @@ private:
 	void OnVelocity( geometry_msgs::TwistStamped const& twist) {
 		//ROS_INFO("GOT VELOCITY");
 		attitude_generator.setZvelocity(twist.twist.linear.z);
-		Vector3 velocity_world_frame(twist.twist.linear.x, twist.twist.linear.y, twist.twist.linear.z);
-		Vector3 velocity_ortho_body_frame = RotateWorldToOrthoBody(velocity_world_frame);
+		//Vector3 velocity_world_frame(twist.twist.linear.x, twist.twist.linear.y, twist.twist.linear.z);
+		Vector3 velocity_ortho_body_frame = RotateWorldToOrthoBody(last_plan_vel);
 		if (!use_3d_library) {
 			velocity_ortho_body_frame(2) = 0.0;  // WARNING for 2D only
 		}
@@ -701,6 +730,7 @@ private:
 	    geometry_msgs::PoseStamped pose_ortho_body_vector = PoseFromVector3(ortho_body_frame, "ortho_body");
     	geometry_msgs::PoseStamped pose_vector_world_frame = PoseFromVector3(Vector3(0,0,0), "world");
     	tf2::doTransform(pose_ortho_body_vector, pose_vector_world_frame, tf);
+
     	return VectorFromPose(pose_vector_world_frame);
 	}
 
