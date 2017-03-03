@@ -686,7 +686,7 @@ private:
 	// T = period
         double A_dolphin = 0.5;
         double T_dolphin = 3.0;
-        double dolphin_acceleration_threshold = 100.0;
+        double dolphin_acceleration_threshold = 2.0;
         double cooldown_duration = 3.0;
 
         double time_of_last_dolphin_query = 0;
@@ -954,7 +954,7 @@ private:
 	tf2_ros::Buffer tf_buffer_;
 
 	double start_time = 0.0;
-	double final_time = 2.0;
+	double final_time = 1.5;
 
 	double bearing_azimuth_degrees = 0.0;
 	double set_bearing_azimuth_degrees = 0.0;
