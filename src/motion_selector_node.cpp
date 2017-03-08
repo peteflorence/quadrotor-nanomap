@@ -33,11 +33,12 @@
 #include "attitude_generator.h"
 #include "motion_visualizer.h"
 
+#include "fla_utils/param_utils.h"
 
 class MotionSelectorNode {
 public:
 
-	MotionSelectorNode() {
+	MotionSelectorNode() : nh("~") {
 
 
 		// Initialization
@@ -46,18 +47,18 @@ public:
         double speed_at_acceleration_max;
         double acceleration_interpolation_max;
 
-		nh.param("soft_top_speed", soft_top_speed, 2.0);
-		nh.param("acceleration_interpolation_min", acceleration_interpolation_min, 3.5);
-		nh.param("yaw_on", yaw_on, false);
-		nh.param("use_depth_image", use_depth_image, true);
-        nh.param("speed_at_acceleration_max", speed_at_acceleration_max, 10.0);
-        nh.param("acceleration_interpolation_max", acceleration_interpolation_max, 4.0);
-        nh.param("flight_altitude", flight_altitude, 1.2);
-        nh.param("use_3d_library", use_3d_library, false);
-        nh.param("max_e_stop_pitch_degrees", max_e_stop_pitch_degrees, 60.0);
-        nh.param("laser_z_below_project_up", laser_z_below_project_up, -0.5);
-        nh.param("A_dolphin", A_dolphin, 0.5);
-        nh.param("T_dolphin", T_dolphin, 3.0);
+		fla_utils::SafeGetParam(nh, "soft_top_speed", soft_top_speed);
+		fla_utils::SafeGetParam(nh, "acceleration_interpolation_min", acceleration_interpolation_min);
+		fla_utils::SafeGetParam(nh, "yaw_on", yaw_on);
+		fla_utils::SafeGetParam(nh, "use_depth_image", use_depth_image);
+        fla_utils::SafeGetParam(nh, "speed_at_acceleration_max", speed_at_acceleration_max);
+        fla_utils::SafeGetParam(nh, "acceleration_interpolation_max", acceleration_interpolation_max);
+        fla_utils::SafeGetParam(nh, "flight_altitude", flight_altitude);
+        fla_utils::SafeGetParam(nh, "use_3d_library", use_3d_library);
+        fla_utils::SafeGetParam(nh, "max_e_stop_pitch_degrees", max_e_stop_pitch_degrees);
+        fla_utils::SafeGetParam(nh, "laser_z_below_project_up", laser_z_below_project_up);
+        fla_utils::SafeGetParam(nh, "A_dolphin", A_dolphin);
+        fla_utils::SafeGetParam(nh, "T_dolphin", T_dolphin);
 
 		this->soft_top_speed_max = soft_top_speed;
 
@@ -81,27 +82,27 @@ public:
 		PublishOrthoBodyTransform(0.0, 0.0); // initializes ortho_body transform to be with 0, 0 roll, pitch
 		srand ( time(NULL) ); //initialize the random seed
 
-                // Subscribers
+		// Subscribers
 
-                pose_sub = nh.subscribe("/pose", 1, &MotionSelectorNode::OnPose, this);
-                velocity_sub = nh.subscribe("/twist", 1, &MotionSelectorNode::OnVelocity, this);
-                
-				camera_info_sub = nh.subscribe("depth_camera_info", 1, &MotionSelectorNode::OnCameraInfo, this);
-                depth_image_sub = nh.subscribe("depth_camera_pointcloud", 1, &MotionSelectorNode::OnDepthImage, this);
-                
-                local_goal_sub = nh.subscribe("/local_goal", 1, &MotionSelectorNode::OnLocalGoal, this);
-                //value_grid_sub = nh.subscribe("/value_grid", 1, &MotionSelectorNode::OnValueGrid, this);
-                laser_scan_sub = nh.subscribe("/laserscan_to_pointcloud/cloud2_out", 1, &MotionSelectorNode::OnScan, this);
-
-
-                // Publishers
-                carrot_pub = nh.advertise<visualization_msgs::Marker>( "carrot_marker", 0 );
-                gaussian_pub = nh.advertise<visualization_msgs::Marker>( "gaussian_visualization", 0 );
-                attitude_thrust_pub = nh.advertise<mavros_msgs::AttitudeTarget>("/mux_input_1", 1);
-                attitude_setpoint_visualization_pub = nh.advertise<geometry_msgs::PoseStamped>("attitude_setpoint", 1);
-                status_pub = nh.advertise<fla_msgs::ProcessStatus>("/globalstatus", 0);
+        pose_sub = nh.subscribe("pose_topic", 1, &MotionSelectorNode::OnPose, this);
+        velocity_sub = nh.subscribe("twist_topic", 1, &MotionSelectorNode::OnVelocity, this);
+        
+		camera_info_sub = nh.subscribe("depth_camera_info_topic", 1, &MotionSelectorNode::OnCameraInfo, this);
+        depth_image_sub = nh.subscribe("depth_camera_pointcloud_topic", 1, &MotionSelectorNode::OnDepthImage, this);
+        
+        local_goal_sub = nh.subscribe("local_goal_topic", 1, &MotionSelectorNode::OnLocalGoal, this);
+        //value_grid_sub = nh.subscribe("/value_grid", 1, &MotionSelectorNode::OnValueGrid, this);
+        laser_scan_sub = nh.subscribe("laser_scan_topic", 1, &MotionSelectorNode::OnScan, this);
 
 
+        // Publishers
+        carrot_pub = nh.advertise<visualization_msgs::Marker>( "carrot_marker_topic", 0 );
+        gaussian_pub = nh.advertise<visualization_msgs::Marker>( "gaussian_visualization_topic", 0 );
+        attitude_thrust_pub = nh.advertise<mavros_msgs::AttitudeTarget>("attitude_setpoint_topic", 1);
+        attitude_setpoint_visualization_pub = nh.advertise<geometry_msgs::PoseStamped>("setpoint_visualization_topic", 1);
+        status_pub = nh.advertise<fla_msgs::ProcessStatus>("status_topic", 0);
+
+        ROS_WARN("Got through to here");
 
 	}
 

@@ -22,6 +22,7 @@ find_package(catkin REQUIRED COMPONENTS
   mavros_msgs
   pcl_ros
   fla_msgs
+  fla_utils
 )
 
 add_message_files( DIRECTORY msg FILES Coeff.msg State.msg )
