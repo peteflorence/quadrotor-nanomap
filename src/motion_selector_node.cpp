@@ -101,10 +101,7 @@ public:
         attitude_thrust_pub = nh.advertise<mavros_msgs::AttitudeTarget>("attitude_setpoint_topic", 1);
         attitude_setpoint_visualization_pub = nh.advertise<geometry_msgs::PoseStamped>("setpoint_visualization_topic", 1);
         status_pub = nh.advertise<fla_msgs::ProcessStatus>("status_topic", 0);
-
-        ROS_WARN("Got through to here");
-
-	}
+ 	}
 
 	bool got_camera_info = false;
 	void OnCameraInfo(const sensor_msgs::CameraInfo msg) {
