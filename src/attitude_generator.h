@@ -10,11 +10,11 @@ public:
   // this function is for debug use -- allows setting of gains during flight
   void setGains(Vector3 const& pid, double const& offset);
 
-  double zPID();
+  double zPID(double forward_propagation_time);
 
   void UpdateRollPitch(double roll, double pitch);
 
-  Vector3 generateDesiredAttitudeThrust(Vector3 const& desired_acceleration);
+  Vector3 generateDesiredAttitudeThrust(Vector3 const& desired_acceleration, double forward_propagation_time);
 
 private:
   
