@@ -35,6 +35,6 @@ private:
   double _Kd = 0.5;
   double _integral = 0.0;
   double _i_max = 0.07;
-  double _offset = 0.605;
+  double _offset = 0.75;
 
 };
