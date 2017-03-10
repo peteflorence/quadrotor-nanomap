@@ -1,7 +1,7 @@
 <launch>
   <arg name="load_params" default="true" />
   <arg name="use_global_planner" default="true"/>  
-  <arg name="use_xtion" default="false" /> <!-- otherwise use r200 -->
+  <arg name="use_xtion" default="false" />
   <arg name="use_realsense" default="false" />
   <arg name="use_depthest" default="true" />
 
