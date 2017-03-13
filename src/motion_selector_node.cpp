@@ -8,6 +8,7 @@
 #include <nav_msgs/OccupancyGrid.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <sensor_msgs/CameraInfo.h>
+#include <sensor_msgs/Range.h>
 #include <std_msgs/Float64.h>
 #include "fla_msgs/ProcessStatus.h"
 
