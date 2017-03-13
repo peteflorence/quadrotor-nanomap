@@ -88,6 +88,7 @@ public:
 
                 pose_sub = nh.subscribe("/pose", 1, &MotionSelectorNode::OnPose, this);
                 velocity_sub = nh.subscribe("/twist", 1, &MotionSelectorNode::OnVelocity, this);
+                max_speed_sub = nh.subscribe("/max_speed", 1, &MotionSelectorNode::OnMaxSpeed, this);
                 height_above_ground_sub = nh.subscribe("/lidarlite_filter/height_above_ground", 1, &MotionSelectorNode::OnLidarlite, this);
                 
 				camera_info_sub = nh.subscribe("depth_camera_info", 1, &MotionSelectorNode::OnCameraInfo, this);
