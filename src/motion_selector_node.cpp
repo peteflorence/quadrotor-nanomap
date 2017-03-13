@@ -59,6 +59,7 @@ public:
         nh.param("laser_z_below_project_up", laser_z_below_project_up, -0.5);
         nh.param("A_dolphin", A_dolphin, 0.5);
         nh.param("T_dolphin", T_dolphin, 3.0);
+        nh.param("use_lidar_lite_z", use_lidar_lite_z, false);
 
 		this->soft_top_speed_max = soft_top_speed;
 
@@ -84,15 +85,17 @@ public:
 
                 // Subscribers
 
-        pose_sub = nh.subscribe("/pose", 1, &MotionSelectorNode::OnPose, this);
-        velocity_sub = nh.subscribe("/twist", 1, &MotionSelectorNode::OnVelocity, this);
-        max_speed_sub = nh.subscribe("/max_speed", 1, &MotionSelectorNode::OnMaxSpeed, this);
-		camera_info_sub = nh.subscribe("depth_camera_info", 1, &MotionSelectorNode::OnCameraInfo, this);
-        depth_image_sub = nh.subscribe("depth_camera_pointcloud", 1, &MotionSelectorNode::OnDepthImage, this);
-        
-        local_goal_sub = nh.subscribe("/local_goal", 1, &MotionSelectorNode::OnLocalGoal, this);
-        //value_grid_sub = nh.subscribe("/value_grid", 1, &MotionSelectorNode::OnValueGrid, this);
-        laser_scan_sub = nh.subscribe("/laserscan_to_pointcloud/cloud2_out", 1, &MotionSelectorNode::OnScan, this);
+
+                pose_sub = nh.subscribe("/pose", 1, &MotionSelectorNode::OnPose, this);
+                velocity_sub = nh.subscribe("/twist", 1, &MotionSelectorNode::OnVelocity, this);
+                height_above_ground_sub = nh.subscribe("/lidarlite_filter/height_above_ground", 1, &MotionSelectorNode::OnLidarlite, this);
+                
+				camera_info_sub = nh.subscribe("depth_camera_info", 1, &MotionSelectorNode::OnCameraInfo, this);
+                depth_image_sub = nh.subscribe("depth_camera_pointcloud", 1, &MotionSelectorNode::OnDepthImage, this);
+                
+                local_goal_sub = nh.subscribe("/local_goal", 1, &MotionSelectorNode::OnLocalGoal, this);
+                //value_grid_sub = nh.subscribe("/value_grid", 1, &MotionSelectorNode::OnValueGrid, this);
+                laser_scan_sub = nh.subscribe("/laserscan_to_pointcloud/cloud2_out", 1, &MotionSelectorNode::OnScan, this);
 
 
         // Publishers
@@ -422,10 +425,19 @@ private:
 	}
 
 
+	void OnLidarlite(sensor_msgs::Range const& msg) {
+		if (use_lidar_lite_z) {
+			attitude_generator.setZ(msg.range);
+		}
+	}
+
+	ros::Time last_pose_update;
 	void OnPose( geometry_msgs::PoseStamped const& pose ) {
 		//ROS_INFO("GOT POSE");
-		attitude_generator.setZ(pose.pose.position.z);
-		
+		if (!use_lidar_lite_z) {
+			attitude_generator.setZ(pose.pose.position.z);
+		}
+
 		tf::Quaternion q(pose.pose.orientation.x, pose.pose.orientation.y, pose.pose.orientation.z, pose.pose.orientation.w);
 		double roll, pitch, yaw;
 		tf::Matrix3x3(q).getRPY(roll, pitch, yaw);
@@ -933,6 +945,7 @@ private:
 	ros::Subscriber camera_info_sub;
 	ros::Subscriber pose_sub;
 	ros::Subscriber velocity_sub;
+	ros::Subscriber height_above_ground_sub;
 	ros::Subscriber depth_image_sub;
 	ros::Subscriber global_goal_sub;
 	ros::Subscriber local_goal_sub;
@@ -981,6 +994,7 @@ private:
 	bool yaw_on = false;
 	double soft_top_speed_max = 0.0;
 	bool use_depth_image = true;
+	bool use_lidar_lite_z = false;
 	bool use_3d_library = false;
 	double flight_altitude = 1.0;
 

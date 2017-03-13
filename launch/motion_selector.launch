@@ -9,6 +9,7 @@
   <arg name="speed_at_acceleration_max" default="10.0"/>
   <arg name="yaw_on" default="true"/>
   <arg name="use_depth_image" default="true"/>
+  <arg name="use_lidar_lite_z" default="false"/>
   <arg name="flight_altitude" default="1.5"/>
   <arg name="use_3d_library" default="false"/>
 
@@ -18,7 +19,10 @@
   <arg name="A_dolphin" default="0.4"/>
   <arg name="T_dolphin" default="3.0"/>
 
-  <arg name="use_xtion" default="true" /> <!-- otherwise use r200 -->
+
+  <arg name="use_xtion" default="false" />
+  <arg name="use_realsense" default="true" />
+  <arg name="use_depthest" default="false" />
 
   <arg name="r200_depth_camera_info_topic" default="/flight/r200/depth_red/camera_info" />
   <arg name="r200_depth_camera_pointcloud_topic" default="/flight/r200/points_xyz" />
