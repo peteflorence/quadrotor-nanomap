@@ -25,5 +25,6 @@
     <remap from="~attitude_setpoint_topic" to="/mux_input_1" />
     <remap from="~setpoint_visualization_topic" to="/attitude_setpoint" />
     <remap from="~status_topic" to="/globalstatus" />
+    <remap from="~local_goal_topic" to="/local_goal" />
   </node>
 </launch>
