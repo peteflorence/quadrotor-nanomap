@@ -158,7 +158,7 @@ public:
 	}
 
 	void ReactToSampledPointCloud() {
-		if (!got_camera_info) {
+		if (!got_camera_info && use_depth_image) {
 			ROS_WARN_THROTTLE(1.0, "Haven't received camera info yet");
 		}
 
@@ -454,7 +454,7 @@ private:
 		msg.status = fla_msgs::ProcessStatus::READY;
 		msg.arg = 0;
 
-		if (!got_camera_info) {
+		if (!got_camera_info && use_depth_image) {
 			msg.status = fla_msgs::ProcessStatus::ALARM;
 			msg.arg = 1;  
 		}
