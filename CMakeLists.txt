@@ -54,7 +54,7 @@ set(orocos_kdl_LIBRARIES ${OROCOS_KDL})
 
 add_library( motion_selector src/motion_selector.cpp src/motion_library.cpp src/motion.cpp src/attitude_generator.cpp src/motion_visualizer.cpp src/value_grid_evaluator.cpp src/value_grid.cpp src/motion_selector_utils.cpp src/depth_image_collision_evaluator.cpp)
 
-add_library( nanomap src/nanomap/nanomap.cc src/nanomap/pose_manager.cc src/nanomap/structured_point_cloud_chain.cc)
+add_library( nanomap src/nanomap/nanomap.cc src/nanomap/pose_manager.cc src/nanomap/structured_point_cloud_chain.cc src/nanomap/fov_evaluator.cc)
 
 add_executable( motion_selector_node src/motion_selector_node.cpp )
 target_link_libraries( motion_selector_node motion_selector ${catkin_LIBRARIES} ${PCL_LIBRARIES} orocos-kdl)
