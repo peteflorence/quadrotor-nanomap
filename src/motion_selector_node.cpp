@@ -125,6 +125,7 @@ public:
 			depth_image_collision_ptr->setCameraInfo(bin, width, height, K_camera_info);
 			got_camera_info = true;
 			ROS_WARN_THROTTLE(1.0, "Received camera info");
+			depth_image_collision_ptr->nanomap.SetBodyToRdf(GetBodyToRDFRotationMatrix());
 		}
 		depth_sensor_frame = msg.header.frame_id;
 	}
@@ -444,6 +445,16 @@ private:
 		mutex.unlock();
 
 		PublishHealthStatus();
+
+		Eigen::Quaterniond quat(pose.pose.orientation.w, pose.pose.orientation.x, pose.pose.orientation.y, pose.pose.orientation.z);
+		Vector3 pos = Vector3(pose.pose.position.x, pose.pose.position.y, pose.pose.position.z);
+		NanoMapTime nm_time(pose.header.stamp.sec, pose.header.stamp.nsec);
+		NanoMapPose nm_pose(pos, quat, nm_time);
+
+		DepthImageCollisionEvaluator* depth_image_collision_ptr = motion_selector.GetDepthImageCollisionEvaluatorPtr();
+		if (depth_image_collision_ptr != nullptr) {
+			depth_image_collision_ptr->nanomap.AddPose(nm_pose);
+		}
 	}
 
 	void PublishHealthStatus() {
@@ -535,6 +546,23 @@ private:
 		}
     	try {
      		tf = tf_buffer_.lookupTransform(depth_sensor_frame, "ortho_body", 
+                                    ros::Time(0), ros::Duration(1/30.0));
+   		} catch (tf2::TransformException &ex) {
+     	 	ROS_ERROR("ID 5 %s", ex.what());
+      	return Matrix3();
+    	}
+    	Eigen::Quaternion<Scalar> quat(tf.transform.rotation.w, tf.transform.rotation.x, tf.transform.rotation.y, tf.transform.rotation.z);
+	    Matrix3 R = quat.toRotationMatrix();
+	    return R;
+	}
+
+	Matrix3 GetBodyToRDFRotationMatrix() {
+		geometry_msgs::TransformStamped tf;
+		if (!got_camera_info) {
+			return Matrix3();
+		}
+    	try {
+     		tf = tf_buffer_.lookupTransform(depth_sensor_frame, "body", 
                                     ros::Time(0), ros::Duration(1/30.0));
    		} catch (tf2::TransformException &ex) {
      	 	ROS_ERROR("ID 5 %s", ex.what());

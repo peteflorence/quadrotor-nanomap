@@ -1,7 +1,7 @@
 #include "motion.h"
 #include "kd_tree.h"
 
-#include "nanoflann.hpp"
+#include "nanomap/nanomap.h"
 
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl/point_cloud.h>
@@ -39,7 +39,10 @@ public:
 
   void setCameraInfo(double bin, double width, double height, Matrix3 K_camera_info);
 
+  NanoMap nanomap;
+
 private:
+
   pcl::PointCloud<pcl::PointXYZ>::Ptr xyz_cloud_ptr;
   pcl::PointCloud<pcl::PointXYZ>::Ptr xyz_laser_cloud_ptr;
 

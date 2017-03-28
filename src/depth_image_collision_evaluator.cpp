@@ -149,6 +149,8 @@ double DepthImageCollisionEvaluator::computeProbabilityOfCollisionNPositionsKDTr
 }
 
 void DepthImageCollisionEvaluator::setCameraInfo(double bin, double width, double height, Matrix3 K_camera_info) {
+  nanomap.SetCameraInfo(bin, width, height, K_camera_info);
+
   if (bin < 1.0) {binning = 1.0;}
   else {binning = bin;}
   num_x_pixels = width / binning;
