@@ -1,4 +1,4 @@
-soft_top_speed: 4.0 # m/s
+soft_top_speed: 6.0 # m/s
 acceleration_interpolation_min: 2.5 # m/s^2
 acceleration_interpolation_max: 7.5  # m/s^2
 speed_at_acceleration_max: 10.0 # m/s
