@@ -85,8 +85,8 @@ public:
 
 		// Subscribers
 
-		pose_sub = nh.subscribe("pose_topic", 1, &MotionSelectorNode::OnPose, this);
-		velocity_sub = nh.subscribe("twist_topic", 1, &MotionSelectorNode::OnVelocity, this);
+		pose_sub = nh.subscribe("pose_topic", 100, &MotionSelectorNode::OnPose, this);
+		velocity_sub = nh.subscribe("twist_topic", 100, &MotionSelectorNode::OnVelocity, this);
         
 		camera_info_sub = nh.subscribe("depth_camera_info_topic", 1, &MotionSelectorNode::OnCameraInfo, this);
 		depth_image_sub = nh.subscribe("depth_camera_pointcloud_topic", 1, &MotionSelectorNode::OnDepthImage, this);
