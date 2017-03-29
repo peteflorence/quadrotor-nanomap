@@ -116,6 +116,7 @@ double DepthImageCollisionEvaluator::computeProbabilityOfCollisionNPositionsKDTr
 
     NanoMapKnnArgs args;
     args.query_point_current_body_frame = R_body_to_rdf_inverse*R*robot_position;
+    args.axis_aligned_linear_covariance = R_body_to_rdf_inverse*R*sigma_robot_position;
     NanoMapKnnReply reply = nanomap.KnnQuery(args);
 
     if (1) {
