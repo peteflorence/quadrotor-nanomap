@@ -169,7 +169,21 @@ double DepthImageCollisionEvaluator::computeProbabilityOfCollisionNPositionsKDTr
     std::cout << "p_collision_old_thresh " << ThresholdSigmoid(probability_of_collision) << std::endl;
     std::cout << std::endl;
     }
+
+    if (reply.fov_status == NanoMapFovStatus::behind) {
+      return ThresholdSigmoid(probability_of_collision + p_collision_behind);
+    }
+    if (reply.fov_status == NanoMapFovStatus::beyond_sensor_horizon) {
+      return ThresholdSigmoid(probability_of_collision + p_collision_beyond);
+    }
+    if (reply.fov_status == NanoMapFovStatus::laterally_outside_fov) {
+      return ThresholdSigmoid(probability_of_collision + p_collision_up_down_fov);
+    }
+    if (reply.fov_status == NanoMapFovStatus::occluded) {
+      return ThresholdSigmoid(probability_of_collision + p_collision_occluded);
+    }
   }
+
   return ThresholdSigmoid(probability_of_collision);
 }
 

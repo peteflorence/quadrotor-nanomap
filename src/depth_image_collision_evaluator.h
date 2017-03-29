@@ -63,7 +63,8 @@ private:
 
   double p_collision_behind = 0.1;
   double p_collision_left_right_fov = 0.1;
-  double p_collision_up_down_fov = 0.0;
+  double p_collision_up_down_fov = 0.1;
   double p_collision_occluded = 0.999;
+  double p_collision_beyond = 0.1;
 
 };
