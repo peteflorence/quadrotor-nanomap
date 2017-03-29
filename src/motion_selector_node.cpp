@@ -834,7 +834,7 @@ private:
 	  	geometry_msgs::TransformStamped tf;
     	try {
 	     	tf = tf_buffer_.lookupTransform("ortho_body", source_frame,
-	                                    ros::Time(0), ros::Duration(1/30.0));
+	                                    msg->header.stamp, ros::Duration(1/30.0));
 	   		} catch (tf2::TransformException &ex) {
 	     	 	ROS_ERROR("8 %s", ex.what());
       	return;
@@ -878,13 +878,14 @@ private:
 				depth_image_collision_ptr->UpdateRotationMatrix(R);
 				depth_image_collision_ptr->UpdateBodyToRdf(R_set);
 				if(use_depth_image) {
-					pcl::PCLPointCloud2 cloud2;
-					pcl_conversions::toPCL(*point_cloud_msg, cloud2);
-					pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-					pcl::fromPCLPointCloud2(cloud2,*cloud);
+
+					pcl::PCLPointCloud2 cloud2_rdf;
+					pcl_conversions::toPCL(*point_cloud_msg, cloud2_rdf);
+					pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_rdf(new pcl::PointCloud<pcl::PointXYZ>);
+					pcl::fromPCLPointCloud2(cloud2_rdf,*cloud_rdf);
 
 					NanoMapTime nm_time(point_cloud_msg->header.stamp.sec, point_cloud_msg->header.stamp.nsec);
-					depth_image_collision_ptr->nanomap.AddPointCloud(cloud, nm_time, point_cloud_msg->header.seq);
+					depth_image_collision_ptr->nanomap.AddPointCloud(cloud_rdf, nm_time, point_cloud_msg->header.seq);
 
 					pcl::PointCloud<pcl::PointXYZ>::Ptr ortho_body_cloud(new pcl::PointCloud<pcl::PointXYZ>);
 		    		TransformToOrthoBodyPointCloud(depth_sensor_frame, point_cloud_msg, ortho_body_cloud);

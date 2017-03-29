@@ -123,7 +123,7 @@ double DepthImageCollisionEvaluator::computeProbabilityOfCollisionNPositionsKDTr
     //std::cout << "NM robot_position_rdf   " << reply.query_point_in_frame_id.transpose() << std::endl;
     //std::cout << std::endl;
 
-    if (0) {
+    if (1) {
       std::cout << "args.query_point_current_body_frame" << args.query_point_current_body_frame.transpose() << std::endl;
       std::cout << "args.axis_aligned_linear_covariance" << args.axis_aligned_linear_covariance.transpose() << std::endl;
 
@@ -133,10 +133,12 @@ double DepthImageCollisionEvaluator::computeProbabilityOfCollisionNPositionsKDTr
       std::cout << "closest_points_in_frame_id.size() " << reply.closest_points_in_frame_id.size() << std::endl;
       std::cout << "axis_aligned_linear_covariance" << reply.axis_aligned_linear_covariance.transpose() << std::endl;
       if ((reply.closest_points_in_frame_id.size() > 0) && (my_kd_tree_depth_image.closest_pts.size() > 0)) {
-        std::cout << "NanoMap    distance_between " << (reply.closest_points_in_frame_id[0] - reply.query_point_in_frame_id).norm() << std::endl;
+        std::cout << "NanoMap      distance_between           " << (reply.closest_points_in_frame_id[0] - reply.query_point_in_frame_id).norm() << std::endl;
+        std::cout << "             closest_points_in_frame_id " << reply.closest_points_in_frame_id[0].transpose() << std::endl;
         pcl::PointXYZ point = my_kd_tree_depth_image.closest_pts[0];
-        std::cout << "old school distance_between " << (robot_position - Vector3(point.x, point.y, point.z)).norm() << std::endl;
-        std::cout << "closest_points_in_frame_id " << reply.closest_points_in_frame_id[0].transpose() << std::endl;
+        std::cout << "old school   distance_between " << (robot_position - Vector3(point.x, point.y, point.z)).norm() << std::endl;
+        std::cout << "             closest_pts                " << Vector3(point.x, point.y, point.z).transpose() << std::endl;
+        
       }
       std::cout << std::endl; 
     }
@@ -150,10 +152,18 @@ double DepthImageCollisionEvaluator::computeProbabilityOfCollisionNPositionsKDTr
       pcl_vector.push_back(point);
     }
 
-    probability_of_collision = computeProbabilityOfCollisionNPositionsKDTree(reply.query_point_in_frame_id, reply.axis_aligned_linear_covariance, pcl_vector);
-    std::cout << "p_collision_new " << probability_of_collision << std::endl;
+    if (reply.fov_status != NanoMapFovStatus::not_initialized) {
+      probability_of_collision = computeProbabilityOfCollisionNPositionsKDTree(reply.query_point_in_frame_id, reply.axis_aligned_linear_covariance, pcl_vector);  
+    }
+    else {
+      probability_of_collision = 0.0;
+    }
+    
+    std::cout << "p_collision_new        " << probability_of_collision << std::endl;
+    std::cout << "p_collision_new_thresh " << ThresholdSigmoid(probability_of_collision) << std::endl;
     probability_of_collision = computeProbabilityOfCollisionNPositionsKDTree(robot_position, sigma_robot_position, my_kd_tree_depth_image.closest_pts);
-    std::cout << "p_collision_old " << probability_of_collision << std::endl;
+    std::cout << "p_collision_old        " << probability_of_collision << std::endl;
+    std::cout << "p_collision_old_thresh " << ThresholdSigmoid(probability_of_collision) << std::endl;
     std::cout << std::endl;
   }
   return ThresholdSigmoid(probability_of_collision);
