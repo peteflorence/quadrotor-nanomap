@@ -119,7 +119,7 @@ double DepthImageCollisionEvaluator::computeProbabilityOfCollisionNPositionsKDTr
     args.axis_aligned_linear_covariance = R_body_to_rdf_inverse*R*sigma_robot_position;
     NanoMapKnnReply reply = nanomap.KnnQuery(args);
 
-    if (1) {
+    if (0) {
       std::cout << "frame_id "   << reply.frame_id   << std::endl;
       std::cout << "fov_status " << reply.fov_status << std::endl;
       std::cout << "query_point_in_frame_id " << reply.query_point_in_frame_id.transpose() << std::endl;
