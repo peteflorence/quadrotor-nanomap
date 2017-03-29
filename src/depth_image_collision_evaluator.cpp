@@ -127,7 +127,8 @@ double DepthImageCollisionEvaluator::computeProbabilityOfCollisionNPositionsKDTr
     }
     if ((reply.closest_points_in_frame_id.size() > 0) && (my_kd_tree_depth_image.closest_pts.size() > 0)) {
       std::cout << "NanoMap    distance_between " << (reply.closest_points_in_frame_id[0] - reply.query_point_in_frame_id).norm() << std::endl;
-      std::cout << "old school distance_between " << (robot_position) << std::endl;
+      pcl::PointXYZ point = my_kd_tree_depth_image.closest_pts[0];
+      std::cout << "old school distance_between " << (robot_position - Vector3(point.x, point.y, point.z)).norm() << std::endl;
     }
 
     probability_of_collision = computeProbabilityOfCollisionNPositionsKDTree(robot_position, sigma_robot_position, my_kd_tree_depth_image.closest_pts);
