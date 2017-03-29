@@ -116,14 +116,19 @@ double DepthImageCollisionEvaluator::computeProbabilityOfCollisionNPositionsKDTr
 
     NanoMapKnnArgs args;
     args.query_point_current_body_frame = R_body_to_rdf_inverse*R*robot_position;
+    std::cout << "DC robot_position_body  " << args.query_point_current_body_frame.transpose() << std::endl;
     args.axis_aligned_linear_covariance = R_body_to_rdf_inverse*R*sigma_robot_position;
     NanoMapKnnReply reply = nanomap.KnnQuery(args);
+
+    std::cout << "NM robot_position_rdf   " << reply.query_point_in_frame_id.transpose() << std::endl;
+    std::cout << std::endl;
 
     if (0) {
       std::cout << "frame_id "   << reply.frame_id   << std::endl;
       std::cout << "fov_status " << reply.fov_status << std::endl;
       std::cout << "query_point_in_frame_id " << reply.query_point_in_frame_id.transpose() << std::endl;
       std::cout << "closest_points_in_frame_id.size() " << reply.closest_points_in_frame_id.size() << std::endl;
+      std::cout << "axis_aligned_linear_covariance" << reply.axis_aligned_linear_covariance.transpose() << std::endl;
       std::cout << std::endl; 
       if ((reply.closest_points_in_frame_id.size() > 0) && (my_kd_tree_depth_image.closest_pts.size() > 0)) {
         std::cout << "NanoMap    distance_between " << (reply.closest_points_in_frame_id[0] - reply.query_point_in_frame_id).norm() << std::endl;
