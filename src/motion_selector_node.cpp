@@ -834,7 +834,7 @@ private:
 	  	geometry_msgs::TransformStamped tf;
     	try {
 	     	tf = tf_buffer_.lookupTransform("ortho_body", source_frame,
-	                                    msg->header.stamp, ros::Duration(1/30.0));
+	                                    ros::Time(0), ros::Duration(1/30.0));
 	   		} catch (tf2::TransformException &ex) {
 	     	 	ROS_ERROR("8 %s", ex.what());
       	return;

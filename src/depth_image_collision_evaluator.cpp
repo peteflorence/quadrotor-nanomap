@@ -109,7 +109,7 @@ double DepthImageCollisionEvaluator::AddOutsideFOVPenalty(Vector3 robot_position
     return ThresholdSigmoid(probability_of_collision);
 }
 
-double DepthImageCollisionEvaluator::computeProbabilityOfCollisionNPositionsKDTree_DepthImage(Vector3 const& robot_position, Vector3 const& sigma_robot_position) {
+double DepthImageCollisionEvaluator::computeProbabilityOfCollisionNPositionsKDTree_DepthImage(Vector3 const& robot_position, Vector3 const& sigma_robot_position, bool print) {
   double probability_of_collision = 0.0;
   if (xyz_cloud_ptr != nullptr) {
     my_kd_tree_depth_image.SearchForNearest<num_nearest_neighbors>(robot_position[0], robot_position[1], robot_position[2]);
@@ -123,7 +123,7 @@ double DepthImageCollisionEvaluator::computeProbabilityOfCollisionNPositionsKDTr
     //std::cout << "NM robot_position_rdf   " << reply.query_point_in_frame_id.transpose() << std::endl;
     //std::cout << std::endl;
 
-    if (1) {
+    if (print) {
       std::cout << "args.query_point_current_body_frame" << args.query_point_current_body_frame.transpose() << std::endl;
       std::cout << "args.axis_aligned_linear_covariance" << args.axis_aligned_linear_covariance.transpose() << std::endl;
 
@@ -159,12 +159,16 @@ double DepthImageCollisionEvaluator::computeProbabilityOfCollisionNPositionsKDTr
       probability_of_collision = 0.0;
     }
     
+    if (print) {
     std::cout << "p_collision_new        " << probability_of_collision << std::endl;
     std::cout << "p_collision_new_thresh " << ThresholdSigmoid(probability_of_collision) << std::endl;
+    }
     probability_of_collision = computeProbabilityOfCollisionNPositionsKDTree(robot_position, sigma_robot_position, my_kd_tree_depth_image.closest_pts);
+    if (print) {
     std::cout << "p_collision_old        " << probability_of_collision << std::endl;
     std::cout << "p_collision_old_thresh " << ThresholdSigmoid(probability_of_collision) << std::endl;
     std::cout << std::endl;
+    }
   }
   return ThresholdSigmoid(probability_of_collision);
 }
@@ -188,7 +192,13 @@ double DepthImageCollisionEvaluator::computeProbabilityOfCollisionNPositionsKDTr
       pcl::PointXYZ first_point = closest_pts[i];
       Vector3 depth_position = Vector3(first_point.x, first_point.y, first_point.z);
 
-      Vector3 total_sigma = sigma_robot_position + sigma_depth_point;
+      Vector3 sigma_robot_position_nn = sigma_robot_position*0.0;
+      for (int i = 0; i <3; i++) {
+        if (sigma_robot_position_nn(i) < 0) {
+          sigma_robot_position_nn(i)=-sigma_robot_position_nn(i);
+        }
+      }
+      Vector3 total_sigma = sigma_robot_position_nn + sigma_depth_point;
       Vector3 inverse_total_sigma = Vector3(1/total_sigma(0), 1/total_sigma(1), 1/total_sigma(2));  
     
       double volume = 0.267; // 4/3*pi*r^3, with r=0.4 as first guess
