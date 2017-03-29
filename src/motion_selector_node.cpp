@@ -125,7 +125,7 @@ public:
 			depth_image_collision_ptr->setCameraInfo(bin, width, height, K_camera_info);
 			got_camera_info = true;
 			ROS_WARN_THROTTLE(1.0, "Received camera info");
-			depth_image_collision_ptr->nanomap.SetBodyToRdf(GetBodyToRDFRotationMatrix());
+			//std::cout << "K_camera_info " << K_camera_info << std::endl;
 		}
 		depth_sensor_frame = msg.header.frame_id;
 	}
@@ -559,6 +559,7 @@ private:
 	Matrix3 GetBodyToRDFRotationMatrix() {
 		geometry_msgs::TransformStamped tf;
 		if (!got_camera_info) {
+			std::cout << "hadn't got camera info yet" << std::endl;
 			return Matrix3();
 		}
     	try {
@@ -867,6 +868,11 @@ private:
 			if (depth_image_collision_ptr != nullptr) {
 
 		    	Matrix3 R = GetOrthoBodyToRDFRotationMatrix();
+		    	//std::cout << "ortho_body_to_rdf " << R << std::endl;
+
+		    	Matrix3 R_set = GetBodyToRDFRotationMatrix();
+				//std::cout << "R_set " << R_set << std::endl;
+				depth_image_collision_ptr->nanomap.SetBodyToRdf(R_set);
 
 		    	mutex.lock();
 				depth_image_collision_ptr->UpdateRotationMatrix(R);
