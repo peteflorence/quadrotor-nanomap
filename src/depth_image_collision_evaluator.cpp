@@ -173,9 +173,9 @@ double DepthImageCollisionEvaluator::computeProbabilityOfCollisionNPositionsKDTr
     if (reply.fov_status == NanoMapFovStatus::behind) {
       return ThresholdSigmoid(probability_of_collision + p_collision_behind);
     }
-    //if (reply.fov_status == NanoMapFovStatus::beyond_sensor_horizon) {
-    //  return ThresholdSigmoid(probability_of_collision + p_collision_beyond);
-    //}
+    if (reply.fov_status == NanoMapFovStatus::beyond_sensor_horizon) {
+      return ThresholdSigmoid(probability_of_collision + p_collision_beyond);
+    }
     if (reply.fov_status == NanoMapFovStatus::laterally_outside_fov) {
       return ThresholdSigmoid(probability_of_collision + p_collision_left_right_fov);
     }
