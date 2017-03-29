@@ -25,6 +25,7 @@ public:
   void UpdatePointCloudPtr(pcl::PointCloud<pcl::PointXYZ>::Ptr const& xyz_cloud_new);
   void UpdateLaserPointCloudPtr(pcl::PointCloud<pcl::PointXYZ>::Ptr const& xyz_cloud_new);
   void UpdateRotationMatrix(Matrix3 const R);
+  void UpdateBodyToRdf(Matrix3 const& R);
 
   bool computeDeterministicCollisionOnePositionKDTree(Vector3 const& robot_position);
 
@@ -57,6 +58,8 @@ private:
   KDTree<double> my_kd_tree_laser;
 
   Matrix3 R; //rotation matrix from ortho_body frame into camera rdf frame
+  Matrix3 R_body_to_rdf;
+  Matrix3 R_body_to_rdf_inverse;
 
   double p_collision_behind = 0.1;
   double p_collision_left_right_fov = 0.1;

@@ -16,6 +16,11 @@ void DepthImageCollisionEvaluator::UpdateRotationMatrix(Matrix3 const R) {
   this->R = R;
 };
 
+void DepthImageCollisionEvaluator::UpdateBodyToRdf(Matrix3 const& R) {
+  R_body_to_rdf = R;
+  R_body_to_rdf_inverse = R.inverse();
+}
+
 bool DepthImageCollisionEvaluator::computeDeterministicCollisionOnePositionKDTree(Vector3 const& robot_position) {
   if (robot_position(2) < -1.0) {
     return true;
@@ -110,14 +115,19 @@ double DepthImageCollisionEvaluator::computeProbabilityOfCollisionNPositionsKDTr
     my_kd_tree_depth_image.SearchForNearest<num_nearest_neighbors>(robot_position[0], robot_position[1], robot_position[2]);
 
     NanoMapKnnArgs args;
-    args.query_point_current_body_frame = Vector3(1.0,0,0);
+    args.query_point_current_body_frame = R_body_to_rdf_inverse*R*robot_position;
     NanoMapKnnReply reply = nanomap.KnnQuery(args);
 
     if (1) {
-    std::cout << "frame_id "   << reply.frame_id   << std::endl;
-    std::cout << "fov_status " << reply.fov_status << std::endl;
-    std::cout << "query_point_in_frame_id " << reply.query_point_in_frame_id.transpose() << std::endl;
-    std::cout << "closest_points_in_frame_id.size() " << reply.closest_points_in_frame_id.size() << std::endl; 
+      std::cout << "frame_id "   << reply.frame_id   << std::endl;
+      std::cout << "fov_status " << reply.fov_status << std::endl;
+      std::cout << "query_point_in_frame_id " << reply.query_point_in_frame_id.transpose() << std::endl;
+      std::cout << "closest_points_in_frame_id.size() " << reply.closest_points_in_frame_id.size() << std::endl;
+      std::cout << std::endl; 
+    }
+    if ((reply.closest_points_in_frame_id.size() > 0) && (my_kd_tree_depth_image.closest_pts.size() > 0)) {
+      std::cout << "NanoMap    distance_between " << (reply.closest_points_in_frame_id[0] - reply.query_point_in_frame_id).norm() << std::endl;
+      std::cout << "old school distance_between " << (robot_position) << std::endl;
     }
 
     probability_of_collision = computeProbabilityOfCollisionNPositionsKDTree(robot_position, sigma_robot_position, my_kd_tree_depth_image.closest_pts);

@@ -876,6 +876,7 @@ private:
 
 		    	mutex.lock();
 				depth_image_collision_ptr->UpdateRotationMatrix(R);
+				depth_image_collision_ptr->UpdateBodyToRdf(R_set);
 				if(use_depth_image) {
 					pcl::PCLPointCloud2 cloud2;
 					pcl_conversions::toPCL(*point_cloud_msg, cloud2);
