@@ -263,7 +263,7 @@ void MotionSelector::EvaluateCollisionProbabilities() {
   for (auto motion = motion_iterator_begin; motion != motion_iterator_end; motion++) {
     double collision_probability = 0;
     double hokuyo_collision_probability = 0;
-    computeProbabilityOfCollisionOneMotion(*motion, collision_probability, hokuyo_collision_probability);
+    computeProbabilityOfCollisionOneMotion(*motion, collision_probability, hokuyo_collision_probability, (i==0));
     collision_probabilities.at(i) = collision_probability;
     hokuyo_collision_probabilities.at(i) = hokuyo_collision_probability;
     no_collision_probabilities.at(i) = 1.0 - collision_probabilities.at(i); 
@@ -271,7 +271,7 @@ void MotionSelector::EvaluateCollisionProbabilities() {
   }
 };
 
-void MotionSelector::computeProbabilityOfCollisionOneMotion(Motion motion, double &collision_probability, double &hokuyo_collision_probability) {
+void MotionSelector::computeProbabilityOfCollisionOneMotion(Motion motion, double &collision_probability, double &hokuyo_collision_probability, bool print) {
   double probability_no_collision = 1;
   double probability_no_collision_hokuyo = 1;
 
@@ -295,7 +295,7 @@ void MotionSelector::computeProbabilityOfCollisionOneMotion(Motion motion, doubl
     //std::cout << "MS sigma_robot_position " << sigma_robot_position.transpose() << std::endl;
     //std::cout << "MS robot_position_rdf   " << robot_position_rdf.transpose() << std::endl;
     
-    probability_of_collision_one_step_one_depth = depth_image_collision_evaluator.computeProbabilityOfCollisionNPositionsKDTree_DepthImage(robot_position, sigma_robot_position, false);
+    probability_of_collision_one_step_one_depth = depth_image_collision_evaluator.computeProbabilityOfCollisionNPositionsKDTree_DepthImage(robot_position, sigma_robot_position, (print && (time_step_index==19)) );
     //probability_of_collision_one_step_one_depth = depth_image_collision_evaluator.AddOutsideFOVPenalty(robot_position_rdf, probability_of_collision_one_step_one_depth);
 
     probability_no_collision_one_step = probability_no_collision_one_step * (1 - probability_of_collision_one_step_one_depth);

@@ -60,7 +60,7 @@ private:
   void EvaluateAltitudeCost();
 
   void EvaluateCollisionProbabilities();
-  void computeProbabilityOfCollisionOneMotion(Motion motion, double &collision_probability, double &hokuyo_collision_probability);
+  void computeProbabilityOfCollisionOneMotion(Motion motion, double &collision_probability, double &hokuyo_collision_probability, bool print);
   double computeProbabilityOfCollisionOneMotion_MonteCarlo(Motion motion, std::vector<Vector3> sampled_initial_velocities, size_t n);
   
   double final_time = 1.0;
