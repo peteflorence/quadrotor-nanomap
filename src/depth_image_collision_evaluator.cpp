@@ -123,7 +123,7 @@ double DepthImageCollisionEvaluator::computeProbabilityOfCollisionNPositionsKDTr
     //std::cout << "NM robot_position_rdf   " << reply.query_point_in_frame_id.transpose() << std::endl;
     //std::cout << std::endl;
 
-    if (print) {
+    if (1) {
       std::cout << "args.query_point_current_body_frame" << args.query_point_current_body_frame.transpose() << std::endl;
       std::cout << "args.axis_aligned_linear_covariance" << args.axis_aligned_linear_covariance.transpose() << std::endl;
 
