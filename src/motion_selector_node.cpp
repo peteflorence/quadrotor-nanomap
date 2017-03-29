@@ -887,9 +887,9 @@ private:
 					NanoMapTime nm_time(point_cloud_msg->header.stamp.sec, point_cloud_msg->header.stamp.nsec);
 					depth_image_collision_ptr->nanomap.AddPointCloud(cloud_rdf, nm_time, point_cloud_msg->header.seq);
 
-					pcl::PointCloud<pcl::PointXYZ>::Ptr ortho_body_cloud(new pcl::PointCloud<pcl::PointXYZ>);
-		    		TransformToOrthoBodyPointCloud(depth_sensor_frame, point_cloud_msg, ortho_body_cloud);
-					depth_image_collision_ptr->UpdatePointCloudPtr(ortho_body_cloud);
+					//pcl::PointCloud<pcl::PointXYZ>::Ptr ortho_body_cloud(new pcl::PointCloud<pcl::PointXYZ>);
+		    		//TransformToOrthoBodyPointCloud(depth_sensor_frame, point_cloud_msg, ortho_body_cloud);
+					//depth_image_collision_ptr->UpdatePointCloudPtr(ortho_body_cloud);
 				}
 				mutex.unlock();
 			}
