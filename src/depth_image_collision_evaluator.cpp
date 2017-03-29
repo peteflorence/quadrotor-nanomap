@@ -108,6 +108,16 @@ double DepthImageCollisionEvaluator::computeProbabilityOfCollisionNPositionsKDTr
   double probability_of_collision = 0.0;
   if (xyz_cloud_ptr != nullptr) {
     my_kd_tree_depth_image.SearchForNearest<num_nearest_neighbors>(robot_position[0], robot_position[1], robot_position[2]);
+
+    NanoMapKnnArgs args;
+    args.query_point_current_body_frame = Vector3(1,0,0);
+    NanoMapKnnReply reply = nanomap.KnnQuery(args);
+
+    std::cout << "frame_id"   << reply.frame_id   << std::endl;
+    std::cout << "fov_status" << "reply.fov_status.ToString()" << std::endl;
+    std::cout << "query_point_in_frame_id" << reply.query_point_in_frame_id << std::endl;
+    std::cout << "closest_points_in_frame_id[0]" << reply.closest_points_in_frame_id[0] << std::endl; 
+
     probability_of_collision = computeProbabilityOfCollisionNPositionsKDTree(robot_position, sigma_robot_position, my_kd_tree_depth_image.closest_pts);
   }
   return ThresholdSigmoid(probability_of_collision);
