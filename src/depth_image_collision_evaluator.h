@@ -61,9 +61,9 @@ private:
   Matrix3 R_body_to_rdf;
   Matrix3 R_body_to_rdf_inverse;
 
-  double p_collision_behind = 0.2;
-  double p_collision_left_right_fov = 0.2;
-  double p_collision_up_down_fov = 0.2;
+  double p_collision_behind = 0.1;
+  double p_collision_left_right_fov = 0.1;
+  double p_collision_up_down_fov = 0.1;
   double p_collision_occluded = 0.999;
   double p_collision_beyond = 0.5;
 
