@@ -295,7 +295,7 @@ void MotionSelector::computeProbabilityOfCollisionOneMotion(Motion motion, doubl
     //std::cout << "MS sigma_robot_position " << sigma_robot_position.transpose() << std::endl;
     //std::cout << "MS robot_position_rdf   " << robot_position_rdf.transpose() << std::endl;
     
-    probability_of_collision_one_step_one_depth = depth_image_collision_evaluator.computeProbabilityOfCollisionNPositionsKDTree_DepthImage(robot_position, sigma_robot_position, (time_step_index==10));
+    probability_of_collision_one_step_one_depth = depth_image_collision_evaluator.computeProbabilityOfCollisionNPositionsKDTree_DepthImage(robot_position, sigma_robot_position, false);
     probability_of_collision_one_step_one_depth = depth_image_collision_evaluator.AddOutsideFOVPenalty(robot_position_rdf, probability_of_collision_one_step_one_depth);
 
     probability_no_collision_one_step = probability_no_collision_one_step * (1 - probability_of_collision_one_step_one_depth);

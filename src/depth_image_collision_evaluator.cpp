@@ -163,7 +163,7 @@ double DepthImageCollisionEvaluator::computeProbabilityOfCollisionNPositionsKDTr
     std::cout << "p_collision_new        " << probability_of_collision << std::endl;
     std::cout << "p_collision_new_thresh " << ThresholdSigmoid(probability_of_collision) << std::endl;
     }
-    probability_of_collision = computeProbabilityOfCollisionNPositionsKDTree(robot_position, sigma_robot_position, my_kd_tree_depth_image.closest_pts);
+    //probability_of_collision = computeProbabilityOfCollisionNPositionsKDTree(robot_position, sigma_robot_position, my_kd_tree_depth_image.closest_pts);
     if (print) {
     std::cout << "p_collision_old        " << probability_of_collision << std::endl;
     std::cout << "p_collision_old_thresh " << ThresholdSigmoid(probability_of_collision) << std::endl;
