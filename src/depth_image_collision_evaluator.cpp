@@ -123,7 +123,7 @@ double DepthImageCollisionEvaluator::computeProbabilityOfCollisionNPositionsKDTr
     //std::cout << "NM robot_position_rdf   " << reply.query_point_in_frame_id.transpose() << std::endl;
     //std::cout << std::endl;
 
-    if (1) {
+    if (0) {
       std::cout << "args.query_point_current_body_frame" << args.query_point_current_body_frame.transpose() << std::endl;
       std::cout << "args.axis_aligned_linear_covariance" << args.axis_aligned_linear_covariance.transpose() << std::endl;
 
@@ -150,8 +150,8 @@ double DepthImageCollisionEvaluator::computeProbabilityOfCollisionNPositionsKDTr
       pcl_vector.push_back(point);
     }
 
-    //probability_of_collision = computeProbabilityOfCollisionNPositionsKDTree(reply.query_point_in_frame_id, reply.axis_aligned_linear_covariance, pcl_vector);
-    probability_of_collision = computeProbabilityOfCollisionNPositionsKDTree(robot_position, sigma_robot_position, my_kd_tree_depth_image.closest_pts);
+    probability_of_collision = computeProbabilityOfCollisionNPositionsKDTree(reply.query_point_in_frame_id, reply.axis_aligned_linear_covariance, pcl_vector);
+    //probability_of_collision = computeProbabilityOfCollisionNPositionsKDTree(robot_position, sigma_robot_position, my_kd_tree_depth_image.closest_pts);
   }
   return ThresholdSigmoid(probability_of_collision);
 }
