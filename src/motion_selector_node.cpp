@@ -871,6 +871,14 @@ private:
 		    	mutex.lock();
 				depth_image_collision_ptr->UpdateRotationMatrix(R);
 				if(use_depth_image) {
+					pcl::PCLPointCloud2 cloud2;
+					pcl_conversions::toPCL(*point_cloud_msg, cloud2);
+					pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+					pcl::fromPCLPointCloud2(cloud2,*cloud);
+
+					NanoMapTime nm_time(point_cloud_msg->header.stamp.sec, point_cloud_msg->header.stamp.nsec);
+					depth_image_collision_ptr->nanomap.AddPointCloud(cloud, nm_time);
+
 					pcl::PointCloud<pcl::PointXYZ>::Ptr ortho_body_cloud(new pcl::PointCloud<pcl::PointXYZ>);
 		    		TransformToOrthoBodyPointCloud(depth_sensor_frame, point_cloud_msg, ortho_body_cloud);
 					depth_image_collision_ptr->UpdatePointCloudPtr(ortho_body_cloud);

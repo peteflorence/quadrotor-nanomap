@@ -113,10 +113,12 @@ double DepthImageCollisionEvaluator::computeProbabilityOfCollisionNPositionsKDTr
     args.query_point_current_body_frame = Vector3(1,0,0);
     NanoMapKnnReply reply = nanomap.KnnQuery(args);
 
+    if (0) {
     std::cout << "frame_id "   << reply.frame_id   << std::endl;
     std::cout << "fov_status " << reply.fov_status << std::endl;
     std::cout << "query_point_in_frame_id " << reply.query_point_in_frame_id << std::endl;
     std::cout << "closest_points_in_frame_id.size() " << reply.closest_points_in_frame_id.size() << std::endl; 
+    }
 
     probability_of_collision = computeProbabilityOfCollisionNPositionsKDTree(robot_position, sigma_robot_position, my_kd_tree_depth_image.closest_pts);
   }
