@@ -263,7 +263,7 @@ void MotionSelector::EvaluateCollisionProbabilities() {
   for (auto motion = motion_iterator_begin; motion != motion_iterator_end; motion++) {
     double collision_probability = 0;
     double hokuyo_collision_probability = 0;
-    computeProbabilityOfCollisionOneMotion(*motion, collision_probability, hokuyo_collision_probability, (i==0));
+    computeProbabilityOfCollisionOneMotion(*motion, collision_probability, hokuyo_collision_probability, (i==-1));
     collision_probabilities.at(i) = collision_probability;
     hokuyo_collision_probabilities.at(i) = hokuyo_collision_probability;
     no_collision_probabilities.at(i) = 1.0 - collision_probabilities.at(i); 
