@@ -713,7 +713,19 @@ private:
 	void OnSmoothedPoses(nav_msgs::Path path) {
 		DepthImageCollisionEvaluator* depth_image_collision_ptr = motion_selector.GetDepthImageCollisionEvaluatorPtr();
 		if (depth_image_collision_ptr != nullptr) {
-			//depth_image_collision_ptr->nanomap.AddPoseUpdate(nm_pose);
+			std::vector<NanoMapPose> smoothed_path_vector;
+
+			size_t path_size = path.poses.size();
+			for (size_t i = 0; i < path_size; i++) {
+				geometry_msgs::PoseStamped pose = path.poses.at(i);
+				Eigen::Quaterniond quat(pose.pose.orientation.w, pose.pose.orientation.x, pose.pose.orientation.y, pose.pose.orientation.z);
+				Vector3 pos = Vector3(pose.pose.position.x, pose.pose.position.y, pose.pose.position.z);
+				NanoMapTime nm_time(pose.header.stamp.sec, pose.header.stamp.nsec);
+				NanoMapPose nm_pose(pos, quat, nm_time);
+				smoothed_path_vector.push_back(nm_pose);
+			}
+
+			depth_image_collision_ptr->nanomap.AddPoseUpdates(smoothed_path_vector);
 		}	
 	}
 
