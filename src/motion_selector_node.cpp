@@ -95,6 +95,7 @@ public:
 		local_goal_sub = nh.subscribe("local_goal_topic", 1, &MotionSelectorNode::OnLocalGoal, this);
 		//value_grid_sub = nh.subscribe("/value_grid", 1, &MotionSelectorNode::OnValueGrid, this);
 		laser_scan_sub = nh.subscribe("laser_scan_topic", 1, &MotionSelectorNode::OnScan, this);
+		smoothed_pose_sub = nh.subscribe("/samros/keyposes", 100, &MotionSelectorNode::OnSmoothedPoses, this);
 
 
 		// Publishers
@@ -709,6 +710,14 @@ private:
 		UpdateValueGrid(value_grid_msg);
 	}
 
+	void OnSmoothedPoses(nav_msgs::Path path) {
+		DepthImageCollisionEvaluator* depth_image_collision_ptr = motion_selector.GetDepthImageCollisionEvaluatorPtr();
+		if (depth_image_collision_ptr != nullptr) {
+			//depth_image_collision_ptr->nanomap.AddPoseUpdate(nm_pose);
+		}	
+	}
+
+
 	// Hack function to add motion up/down in order to help state estimator
 	// dolphin_altitude(t) = A * cos(t * 2pi/T) + flight_altitude
 	// A = amplitude
@@ -982,6 +991,7 @@ private:
 	ros::Subscriber value_grid_sub;
 	ros::Subscriber laser_scan_sub;
 	ros::Subscriber max_speed_sub;
+	ros::Subscriber smoothed_pose_sub;
 
 	ros::Publisher carrot_pub;
 	ros::Publisher gaussian_pub;
