@@ -199,12 +199,22 @@ double DepthImageCollisionEvaluator::computeProbabilityOfCollisionNPositionsKDTr
 
 double DepthImageCollisionEvaluator::computeProbabilityOfCollisionNPositionsKDTree(Vector3 const& robot_position, Vector3 const& sigma_robot_position, std::vector<pcl::PointXYZ> const& closest_pts) {
   double probability_no_collision = 1.0;
+  double radius = 0.8;
   
   if (closest_pts.size() > 0) {
     for (size_t i = 0; i < std::min((int)closest_pts.size(), num_nearest_neighbors); i++) {
 
       pcl::PointXYZ first_point = closest_pts[i];
       Vector3 depth_position = Vector3(first_point.x, first_point.y, first_point.z);
+
+      // interpolate towards robot
+      double norm = (robot_position - depth_position).norm();
+      if (norm < radius) {
+        depth_position = robot_position;
+      }
+      else {
+        depth_position = depth_position + (robot_position - depth_position)/norm*radius;
+      }
 
       Vector3 sigma_robot_position_nn = sigma_robot_position*0.0;
       for (int i = 0; i <3; i++) {
