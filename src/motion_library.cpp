@@ -22,6 +22,11 @@ void MotionLibrary::InitializeLibrary(bool use_3d_library, double acceleration_i
 	size_t num_samples_around_circle = 16;
 
 	if (use_3d_library) {
+		horizontal_accelerations.clear();
+		horizontal_accelerations.push_back(initial_max_acceleration);
+		horizontal_accelerations.push_back(0.6*initial_max_acceleration);
+		horizontal_accelerations.push_back(0.15*initial_max_acceleration);
+		num_samples_around_circle = 8;
 		vertical_accelerations.push_back(-2.0);
 		vertical_accelerations.push_back(-0.75);
 		vertical_accelerations.push_back(0.75);
