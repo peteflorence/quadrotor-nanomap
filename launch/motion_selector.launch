@@ -2,6 +2,8 @@
   <arg name="load_params" default="true" />
   <arg name="use_global_planner" default="true"/>  
   <arg name="use_xtion" default="true" /> <!-- otherwise use r200 -->
+  <arg name="use_realsense" default="false" />
+  <arg name="use_depthest" default="true" />
 
   <arg name="r200_depth_camera_info_topic" default="/flight/r200/depth_red/camera_info" />
   <arg name="r200_depth_camera_pointcloud_topic" default="/flight/r200/points_xyz" />
@@ -9,14 +11,22 @@
   <arg name="xtion_depth_camera_info_topic" default="/flight/xtion_depth/camera_info" />
   <arg name="xtion_depth_camera_pointcloud_topic" default="/flight/xtion_depth/points" />
 
+  <arg name="depthest_camera_info_topic" default="/flame/depth_registered/camera_info" />
+  <arg name="depthest_camera_pointcloud_topic" default="/flame/cloud" />
+
   <node pkg="motion_primitives" type="motion_selector_node" name="motion_selector" output="screen">
     <rosparam command="load" if="$(arg load_params)" file="$(find motion_primitives)/cfg/motion_selector.yaml" />
     <remap from="~local_goal_topic" to="/move_base_simple/goal" unless="$(arg use_global_planner)"/>
 
     <remap from="~depth_camera_info_topic" to="$(arg r200_depth_camera_info_topic)" unless="$(arg use_xtion)"/>
     <remap from="~depth_camera_pointcloud_topic" to="$(arg r200_depth_camera_pointcloud_topic)" unless="$(arg use_xtion)"/>
+
     <remap from="~depth_camera_info_topic" to="$(arg xtion_depth_camera_info_topic)" if="$(arg use_xtion)"/>
     <remap from="~depth_camera_pointcloud_topic" to="$(arg xtion_depth_camera_pointcloud_topic)" if="$(arg use_xtion)"/>
+
+    <remap from="~depth_camera_info_topic" to="$(arg depthest_camera_info_topic)" if="$(arg use_depthest)"/>
+    <remap from="~depth_camera_pointcloud_topic" to="$(arg depthest_camera_pointcloud_topic)" if="$(arg use_depthest)"/>
+
     <remap from="~laser_scan_topic" to="/laserscan_to_pointcloud/cloud2_out" />
     <remap from="~pose_topic" to="/pose" />
     <remap from="~twist_topic" to="/twist" />
@@ -26,5 +36,6 @@
     <remap from="~setpoint_visualization_topic" to="/attitude_setpoint" />
     <remap from="~status_topic" to="/globalstatus" />
     <remap from="~local_goal_topic" to="/local_goal" />
+
   </node>
 </launch>
