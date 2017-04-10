@@ -49,6 +49,7 @@ public:
         double speed_at_acceleration_max;
         double acceleration_interpolation_max;
         double offset;
+        int N_depth_image_history;
 
 
 		fla_utils::SafeGetParam(nh, "soft_top_speed", soft_top_speed);
@@ -65,6 +66,7 @@ public:
         fla_utils::SafeGetParam(nh, "T_dolphin", T_dolphin);
         fla_utils::SafeGetParam(nh, "use_lidar_lite_z", use_lidar_lite_z);
         fla_utils::SafeGetParam(nh, "thrust_offset", offset);
+        fla_utils::SafeGetParam(nh, "N_depth_image_history", N_depth_image_history);
 
 		this->soft_top_speed_max = soft_top_speed;
 
@@ -72,6 +74,10 @@ public:
 		motion_selector.SetNominalFlightAltitude(flight_altitude);
 		attitude_generator.setZsetpoint(flight_altitude);
 		attitude_generator.setOffset(offset);
+		DepthImageCollisionEvaluator* depth_image_collision_ptr = motion_selector.GetDepthImageCollisionEvaluatorPtr();
+		if (depth_image_collision_ptr != nullptr) {
+			depth_image_collision_ptr->nanomap.SetNumDepthImageHistory(N_depth_image_history);
+		}
 
 		motion_visualizer.initialize(&motion_selector, nh, &best_traj_index, final_time);
 		tf_listener_ = std::make_shared<tf2_ros::TransformListener>(tf_buffer_);
