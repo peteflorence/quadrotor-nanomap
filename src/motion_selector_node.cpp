@@ -426,6 +426,9 @@ private:
 
 	ros::Time last_pose_update;
 	void OnPose( geometry_msgs::PoseStamped const& pose ) {
+		if ((ros::Time::now() - last_point_cloud_received).toSec() > 0.1) {
+			ReactToSampledPointCloud();
+		}
 		//ROS_INFO("GOT POSE");
 		
 		tf::Quaternion q(pose.pose.orientation.x, pose.pose.orientation.y, pose.pose.orientation.z, pose.pose.orientation.w);
@@ -889,9 +892,11 @@ private:
 		cloud_out = cloud;
 	}
 
+	ros::Time last_point_cloud_received;
 	void OnDepthImage(const sensor_msgs::PointCloud2ConstPtr& point_cloud_msg) {
 		// ROS_INFO("GOT POINT CLOUD");
 		if (UseDepthImage()) {
+			last_point_cloud_received = ros::Time::now();
 			DepthImageCollisionEvaluator* depth_image_collision_ptr = motion_selector.GetDepthImageCollisionEvaluatorPtr();
 
 			if (depth_image_collision_ptr != nullptr) {
