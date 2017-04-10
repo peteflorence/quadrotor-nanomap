@@ -9,6 +9,7 @@ public:
   
   // this function is for debug use -- allows setting of gains during flight
   void setGains(Vector3 const& pid, double const& offset);
+  void setOffset(double offest);
 
   double zPID(double forward_propagation_time);
 

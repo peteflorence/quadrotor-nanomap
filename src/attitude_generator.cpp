@@ -38,6 +38,10 @@ Vector3 AttitudeGenerator::generateDesiredAttitudeThrust(Vector3 const& desired_
 	return Vector3(roll, pitch, thrust);
 };
 
+void AttitudeGenerator::setOffset(double offest) {
+	_offset = offest;
+}
+
 void AttitudeGenerator::setGains(Vector3 const& pid, double const& offset) {
   if( fabs(pid(1) - _Ki) > 1e-6 ) _integral = 0.0;
   _Kp = pid(0);
