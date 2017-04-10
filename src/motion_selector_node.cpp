@@ -8,6 +8,7 @@
 #include <nav_msgs/OccupancyGrid.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <sensor_msgs/CameraInfo.h>
+#include <sensor_msgs/Range.h>
 #include <std_msgs/Float64.h>
 #include "fla_msgs/ProcessStatus.h"
 
@@ -48,6 +49,7 @@ public:
         double speed_at_acceleration_max;
         double acceleration_interpolation_max;
 
+
 		fla_utils::SafeGetParam(nh, "soft_top_speed", soft_top_speed);
 		fla_utils::SafeGetParam(nh, "acceleration_interpolation_min", acceleration_interpolation_min);
 		fla_utils::SafeGetParam(nh, "yaw_on", yaw_on);
@@ -60,6 +62,7 @@ public:
         fla_utils::SafeGetParam(nh, "laser_z_below_project_up", laser_z_below_project_up);
         fla_utils::SafeGetParam(nh, "A_dolphin", A_dolphin);
         fla_utils::SafeGetParam(nh, "T_dolphin", T_dolphin);
+        nh.param("use_lidar_lite_z", use_lidar_lite_z, true);
 
 		this->soft_top_speed_max = soft_top_speed;
 
@@ -97,7 +100,7 @@ public:
 		//value_grid_sub = nh.subscribe("/value_grid", 1, &MotionSelectorNode::OnValueGrid, this);
 		laser_scan_sub = nh.subscribe("laser_scan_topic", 1, &MotionSelectorNode::OnScan, this);
 		smoothed_pose_sub = nh.subscribe("/samros/keyposes", 100, &MotionSelectorNode::OnSmoothedPoses, this);
-
+		height_above_ground_sub = nh.subscribe("/lidarlite_filter/height_above_ground", 1, &MotionSelectorNode::OnLidarlite, this);
 
 		// Publishers
 		carrot_pub = nh.advertise<visualization_msgs::Marker>( "carrot_marker_topic", 0 );
@@ -424,19 +427,29 @@ private:
 		}
 	}
 
+	void OnLidarlite(sensor_msgs::Range const& msg) {
+		if (use_lidar_lite_z) {
+			attitude_generator.setZ(msg.range);
+		}
+	}
+
 	ros::Time last_pose_update;
 	void OnPose( geometry_msgs::PoseStamped const& pose ) {
 		if ((ros::Time::now() - last_point_cloud_received).toSec() > 0.1) {
 			ReactToSampledPointCloud();
 		}
 		//ROS_INFO("GOT POSE");
+
 		
+
 		tf::Quaternion q(pose.pose.orientation.x, pose.pose.orientation.y, pose.pose.orientation.z, pose.pose.orientation.w);
 		double roll, pitch, yaw;
 		tf::Matrix3x3(q).getRPY(roll, pitch, yaw);
 
 		mutex.lock();
-		attitude_generator.setZ(pose.pose.position.z);
+		if (!use_lidar_lite_z) {
+			attitude_generator.setZ(pose.pose.position.z);
+		}
 		last_pose_update = pose.header.stamp;
 		UpdateMotionLibraryRollPitch(roll, pitch);
 		UpdateAttitudeGeneratorRollPitch(roll, pitch);
@@ -1010,6 +1023,7 @@ private:
 	ros::Subscriber camera_info_sub;
 	ros::Subscriber pose_sub;
 	ros::Subscriber velocity_sub;
+	ros::Subscriber height_above_ground_sub;
 	ros::Subscriber depth_image_sub;
 	ros::Subscriber global_goal_sub;
 	ros::Subscriber local_goal_sub;
@@ -1059,6 +1073,7 @@ private:
 	bool yaw_on = false;
 	double soft_top_speed_max = 0.0;
 	bool use_depth_image = true;
+	bool use_lidar_lite_z = false;
 	bool use_3d_library = false;
 	double flight_altitude = 1.0;
 
