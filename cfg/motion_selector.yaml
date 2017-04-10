@@ -10,3 +10,4 @@ max_e_stop_pitch_degrees: 45.0
 laser_z_below_project_up: -0.5 # m
 A_dolphin: 0.4 # m
 T_dolphin: 3.0 # s
+use_lidar_lite_z: false
