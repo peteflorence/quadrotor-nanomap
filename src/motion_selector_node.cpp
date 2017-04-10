@@ -62,7 +62,7 @@ public:
         fla_utils::SafeGetParam(nh, "laser_z_below_project_up", laser_z_below_project_up);
         fla_utils::SafeGetParam(nh, "A_dolphin", A_dolphin);
         fla_utils::SafeGetParam(nh, "T_dolphin", T_dolphin);
-        nh.param("use_lidar_lite_z", use_lidar_lite_z, true);
+        nh.param("use_lidar_lite_z", use_lidar_lite_z, false);
 
 		this->soft_top_speed_max = soft_top_speed;
 
