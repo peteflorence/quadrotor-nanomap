@@ -80,6 +80,7 @@ public:
 
 		    break;
 		}
+		last_pose_update = ros::Time::now();
 		PublishOrthoBodyTransform(0.0, 0.0); // initializes ortho_body transform to be with 0, 0 roll, pitch
 		srand ( time(NULL) ); //initialize the random seed
 
@@ -267,7 +268,8 @@ public:
 		if (use_3d_library) {
 			AltitudeFeedbackOnBestMotion();
 		}
-		Vector3 attitude_thrust_desired = attitude_generator.generateDesiredAttitudeThrust(desired_acceleration);
+		double forward_propagation_time = ros::Time::now().toSec() - last_pose_update.toSec();
+		Vector3 attitude_thrust_desired = attitude_generator.generateDesiredAttitudeThrust(desired_acceleration, forward_propagation_time);
 		SetThrustForLibrary(attitude_thrust_desired(2));
 		mutex.unlock();
 		PublishAttitudeSetpoint(attitude_thrust_desired);
@@ -422,21 +424,29 @@ private:
 		}
 	}
 
-
+	ros::Time last_pose_update;
 	void OnPose( geometry_msgs::PoseStamped const& pose ) {
 		//ROS_INFO("GOT POSE");
-		attitude_generator.setZ(pose.pose.position.z);
 		
 		tf::Quaternion q(pose.pose.orientation.x, pose.pose.orientation.y, pose.pose.orientation.z, pose.pose.orientation.w);
 		double roll, pitch, yaw;
 		tf::Matrix3x3(q).getRPY(roll, pitch, yaw);
 
 		mutex.lock();
+		attitude_generator.setZ(pose.pose.position.z);
+		last_pose_update = pose.header.stamp;
 		UpdateMotionLibraryRollPitch(roll, pitch);
 		UpdateAttitudeGeneratorRollPitch(roll, pitch);
 		PublishOrthoBodyTransform(roll, pitch);
 		UpdateCarrotOrthoBodyFrame();
 		UpdateLaserRDFFramesFromPose();
+
+		double dolphin_altitude = DolphinStrokeDetermineAltitude(speed);
+		carrot_world_frame(2) = dolphin_altitude; 
+		if (!use_3d_library) {
+			attitude_generator.setZsetpoint(dolphin_altitude);
+		}
+
 		mutex.unlock();
 
 		ComputeBestAccelerationMotion();
@@ -818,11 +828,9 @@ private:
 	void OnLocalGoal(geometry_msgs::PoseStamped const& local_goal) {
 		//ROS_INFO("GOT LOCAL GOAL");
 		mutex.lock();
-		double dolphin_altitude = DolphinStrokeDetermineAltitude(speed);
-		carrot_world_frame << local_goal.pose.position.x, local_goal.pose.position.y, dolphin_altitude; 
-		if (!use_3d_library) {
-			attitude_generator.setZsetpoint(dolphin_altitude);
-		}
+		
+		carrot_world_frame(0) = local_goal.pose.position.x; 
+		carrot_world_frame(1) = local_goal.pose.position.y;
 
 		UpdateCarrotOrthoBodyFrame();
 		mutex.unlock();
@@ -855,7 +863,7 @@ private:
 	  	geometry_msgs::TransformStamped tf;
     	try {
 	     	tf = tf_buffer_.lookupTransform("ortho_body", source_frame,
-	                                    ros::Time(0), ros::Duration(1/30.0));
+						ros::Time(0), ros::Duration(1/30.0));
 	   		} catch (tf2::TransformException &ex) {
 	     	 	ROS_ERROR("8 %s", ex.what());
       	return;
