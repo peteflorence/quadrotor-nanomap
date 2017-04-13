@@ -11,6 +11,7 @@
 #include <sensor_msgs/Range.h>
 #include <std_msgs/Float64.h>
 #include "fla_msgs/ProcessStatus.h"
+#include "fla_msgs/FlightCommand.h"
 
 #include "tf/tf.h"
 #include <tf/transform_listener.h>
@@ -30,6 +31,8 @@
 #include <time.h>
 #include <stdlib.h>
 #include <chrono>
+
+#include "acl_fsw/QuadGoal.h"
 
 #include "motion_selector.h"
 #include "attitude_generator.h"
@@ -110,6 +113,7 @@ public:
 		laser_scan_sub = nh.subscribe("laser_scan_topic", 1, &MotionSelectorNode::OnScan, this);
 		smoothed_pose_sub = nh.subscribe("/samros/keyposes", 100, &MotionSelectorNode::OnSmoothedPoses, this);
 		height_above_ground_sub = nh.subscribe("/lidarlite_filter/height_above_ground", 1, &MotionSelectorNode::OnLidarlite, this);
+		command_sub = nh.subscribe("/flight/command", 1, &MotionSelectorNode::OnCommand, this);
 
 		// Publishers
 		carrot_pub = nh.advertise<visualization_msgs::Marker>( "carrot_marker_topic", 0 );
@@ -117,6 +121,7 @@ public:
 		attitude_thrust_pub = nh.advertise<mavros_msgs::AttitudeTarget>("attitude_setpoint_topic", 1);
 		attitude_setpoint_visualization_pub = nh.advertise<geometry_msgs::PoseStamped>("setpoint_visualization_topic", 1);
 		status_pub = nh.advertise<fla_msgs::ProcessStatus>("status_topic", 0);
+		quad_goal_pub = nh.advertise<acl_fsw::QuadGoal>("/FLA_ACL02/goal", 1);
  	}
 
 	void OnMaxSpeed(const std_msgs::Float64 msg) {
@@ -197,7 +202,7 @@ public:
 	    } 
 	    mutex.unlock();
 
-		PublishCurrentAttitudeSetpoint();
+		//PublishCurrentAttitudeSetpoint();
 	}
 
 	void ExecuteEStop() {
@@ -277,14 +282,20 @@ public:
 
 	void PublishCurrentAttitudeSetpoint() {
 		mutex.lock();
-		if (use_3d_library) {
-			AltitudeFeedbackOnBestMotion();
-		}
 		double forward_propagation_time = ros::Time::now().toSec() - last_pose_update.toSec();
 		Vector3 attitude_thrust_desired = attitude_generator.generateDesiredAttitudeThrust(desired_acceleration, forward_propagation_time);
 		SetThrustForLibrary(attitude_thrust_desired(2));
 		mutex.unlock();
-		PublishAttitudeSetpoint(attitude_thrust_desired);
+		if (use_3d_library) {
+			//AltitudeFeedbackOnBestMotion();
+			// pass to acl_fsw instead
+			mutex.lock();
+			PassToOuterLoop(desired_acceleration);
+			mutex.unlock();
+		}
+		else {
+			PublishAttitudeSetpoint(attitude_thrust_desired);
+		}
 	}
 
 	void AltitudeFeedbackOnBestMotion() {
@@ -309,6 +320,96 @@ public:
 	}
 
 private:
+
+	Vector3 last_plan_pos = Vector3(0,0,0);
+	Vector3 last_plan_vel = Vector3(0,0,0);
+	void PassToOuterLoop(Vector3 desired_acceleration_setpoint) {
+		if (!motion_primitives_live) {return;}
+
+		MotionLibrary* motion_library_ptr = motion_selector.GetMotionLibraryPtr();
+		if (motion_library_ptr != nullptr) {
+
+			Motion best_motion = motion_library_ptr->getMotionFromIndex(best_traj_index);
+
+			// build up QuadGoal
+			acl_fsw::QuadGoal quad_goal;
+			quad_goal.cut_power = false;
+			quad_goal.xy_mode = acl_fsw::QuadGoal::MODE_ACCEL;
+			quad_goal.z_mode = acl_fsw::QuadGoal::MODE_POS;
+
+			Vector3 pos = TransformOrthoBodyToWorld(best_motion.getPosition(0.2));
+			Vector3 vel = RotateOrthoBodyToWorld(best_motion.getVelocity(0.01));
+			Vector3 accel = RotateOrthoBodyToWorld(best_motion.getAcceleration());
+			Vector3 jerk = RotateOrthoBodyToWorld(best_motion.getJerk());
+			
+
+			// adjust for plan
+    	
+    		//actual
+    		Vector3 actual = Vector3(pose_global_x,pose_global_y,pose_global_z);
+    		// planned
+    		// add in the diff between planned and actual
+    		Vector3 diff = last_plan_pos - actual;
+    		if (diff(0)>0.3) {diff(0) = 0.0;} 
+    		if (diff(1)>0.3) {diff(1) = 0.0;} 
+    		if (diff(2)>0.3) {diff(2) = 0.0;}
+
+    		if (diff(0)<0.3) {diff(0) = -0.0;} 
+    		if (diff(1)<0.3) {diff(1) = -0.0;} 
+    		if (diff(2)<0.3) {diff(2) = -0.0;}
+    		
+    		std::cout << "------" << std::endl;
+    		std::cout << "pos " << pos << std::endl;
+    		std::cout << "last_plan_pos " << last_plan_pos << std::endl;
+    		std::cout << "actual " << actual << std::endl;
+    		std::cout << "diff " << diff << std::endl;
+
+    		//pos = pos + diff;
+
+			quad_goal.jerk.x = jerk(0);
+			quad_goal.jerk.y = jerk(1);
+			quad_goal.jerk.z = jerk(2);
+			quad_goal.accel.x = accel(0);
+			quad_goal.accel.y = accel(1);
+			quad_goal.accel.z = accel(2);
+			//quad_goal.vel.x = vel(0);
+			//quad_goal.vel.y = vel(1);
+			//quad_goal.vel.z = vel(2);
+			//quad_goal.pos.x = pos(0);
+			//quad_goal.pos.y = pos(1);
+			quad_goal.pos.z = pos(2);
+
+			last_plan_pos = pos;
+			last_plan_vel = vel;
+
+			UpdateYaw();
+			quad_goal.yaw = -set_bearing_azimuth_degrees*M_PI/180.0;
+			// set_bearing_azimuth_degrees = set_bearing_azimuth_degrees+0.5;
+
+			// if (set_bearing_azimuth_degrees > 180.0) {
+			// 	set_bearing_azimuth_degrees -= 360.0;
+			// }
+			// if (set_bearing_azimuth_degrees < -180.0) {
+			// 	set_bearing_azimuth_degrees += 360.0;
+			// }
+			//quad_goal.yaw = 0;
+
+			quad_goal_pub.publish(quad_goal);
+		}
+	}
+
+	bool motion_primitives_live = false;
+	void OnCommand(const fla_msgs::FlightCommand& msg)  {
+	   if (msg.command == fla_msgs::FlightCommand::CMD_GO){
+	        ROS_INFO("GOT GO COMMAND");
+			motion_primitives_live = true;
+
+			ROS_INFO("Starting");	
+		}
+		else{
+			motion_primitives_live = false;
+		}	
+	}
 
 
 	void SetYawFromMotion() {
@@ -625,6 +726,21 @@ private:
 	    return R*world_frame;
 	}
 
+	Vector3 RotateOrthoBodyToWorld(Vector3 const& ortho_body_frame) {
+		geometry_msgs::TransformStamped tf;
+	    try {
+	      tf = tf_buffer_.lookupTransform("world", "ortho_body", 
+	                                    ros::Time(0), ros::Duration(1/30.0));
+	    } catch (tf2::TransformException &ex) {
+	      ROS_ERROR("ID 6 %s", ex.what());
+	      return Vector3(1,1,1);
+	    }
+
+	    Eigen::Quaternion<Scalar> quat(tf.transform.rotation.w, tf.transform.rotation.x, tf.transform.rotation.y, tf.transform.rotation.z);
+	    Matrix3 R = quat.toRotationMatrix();
+	    return R*ortho_body_frame;
+	}
+
 	void UpdateMotionLibraryVelocity(Vector3 const& velocity_ortho_body_frame) {
 		MotionLibrary* motion_library_ptr = motion_selector.GetMotionLibraryPtr();
 		if (motion_library_ptr != nullptr) {
@@ -639,10 +755,12 @@ private:
 		attitude_generator.setZvelocity(twist.twist.linear.z);
 		Vector3 velocity_world_frame(twist.twist.linear.x, twist.twist.linear.y, twist.twist.linear.z);
 		Vector3 velocity_ortho_body_frame = TransformWorldToOrthoBody(velocity_world_frame);
-		velocity_ortho_body_frame(2) = 0.0;  // WARNING for 2D only
+		if (!use_3d_library) {
+			velocity_ortho_body_frame(2) = 0.0;  // WARNING for 2D only
+		}
 		mutex.lock();
 		UpdateMotionLibraryVelocity(velocity_ortho_body_frame);
-		speed = velocity_ortho_body_frame.norm();
+		speed = velocity_ortho_body_frame.norm();											
 		//UpdateTimeHorizon(speed);
 		UpdateMaxAcceleration(speed);
 		mutex.unlock();
@@ -680,6 +798,7 @@ private:
 	    geometry_msgs::PoseStamped pose_ortho_body_vector = PoseFromVector3(ortho_body_frame, "ortho_body");
     	geometry_msgs::PoseStamped pose_vector_world_frame = PoseFromVector3(Vector3(0,0,0), "world");
     	tf2::doTransform(pose_ortho_body_vector, pose_vector_world_frame, tf);
+
     	return VectorFromPose(pose_vector_world_frame);
 	}
 
@@ -953,19 +1072,7 @@ private:
 		}
 	}
 
-	void PublishAttitudeSetpoint(Vector3 const& roll_pitch_thrust) { 
-
-		using namespace Eigen;
-
-		mavros_msgs::AttitudeTarget setpoint_msg;
-		setpoint_msg.header.stamp = ros::Time::now();
-		setpoint_msg.type_mask = mavros_msgs::AttitudeTarget::IGNORE_ROLL_RATE 
-			| mavros_msgs::AttitudeTarget::IGNORE_PITCH_RATE
-			| mavros_msgs::AttitudeTarget::IGNORE_YAW_RATE
-			;
-		
-		mutex.lock();
-
+	void UpdateYaw() {
 		// // Limit size of bearing errors
 		double bearing_error_cap = 30;
 		double actual_bearing_azimuth_degrees = -pose_global_yaw * 180.0/M_PI;
@@ -1008,13 +1115,28 @@ private:
 		if (set_bearing_azimuth_degrees < -180.0) {
 			set_bearing_azimuth_degrees += 360.0;
 		}
+	}
+
+	void PublishAttitudeSetpoint(Vector3 const& roll_pitch_thrust) { 
+
+		using namespace Eigen;
+
+		mavros_msgs::AttitudeTarget setpoint_msg;
+		setpoint_msg.header.stamp = ros::Time::now();
+		setpoint_msg.type_mask = mavros_msgs::AttitudeTarget::IGNORE_ROLL_RATE 
+			| mavros_msgs::AttitudeTarget::IGNORE_PITCH_RATE
+			| mavros_msgs::AttitudeTarget::IGNORE_YAW_RATE
+			;
+
+		mutex.lock();
+		UpdateYaw();
 
 		Matrix3f m;
 		m =AngleAxisf(-set_bearing_azimuth_degrees*M_PI/180.0, Vector3f::UnitZ())
 		* AngleAxisf(roll_pitch_thrust(1), Vector3f::UnitY())
 		* AngleAxisf(-roll_pitch_thrust(0), Vector3f::UnitX());
-
 		mutex.unlock();
+		
 
 		Quaternionf q(m);
 
@@ -1040,12 +1162,14 @@ private:
 	ros::Subscriber laser_scan_sub;
 	ros::Subscriber max_speed_sub;
 	ros::Subscriber smoothed_pose_sub;
+	ros::Subscriber command_sub;
 
 	ros::Publisher carrot_pub;
 	ros::Publisher gaussian_pub;
 	ros::Publisher attitude_thrust_pub;
 	ros::Publisher attitude_setpoint_visualization_pub;
 	ros::Publisher status_pub;
+	ros::Publisher quad_goal_pub;
 
 	std::string depth_sensor_frame = "depth_sensor";
 

@@ -29,6 +29,10 @@ Vector3 Motion::getAcceleration() const{
   return this->acceleration;
 }
 
+Vector3 Motion::getJerk() const {
+  return this->jerk;
+}
+
 Vector3 Motion::getInitialVelocity() const {
   return initial_velocity;
 };

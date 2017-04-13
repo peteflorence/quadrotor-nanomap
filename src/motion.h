@@ -33,6 +33,7 @@ public:
   Vector3 getInitialVelocity() const;
   Vector3 getPosition(Scalar const& t) const;
   Vector3 getTerminalStopPosition(Scalar const& t) const;
+  Vector3 getJerk() const;
 
   void setAccelerationLASER(Vector3 const& acceleration_laser);
   void setInitialAccelerationLASER(Vector3 const& initial_acceleration_laser);

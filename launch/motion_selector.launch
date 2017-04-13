@@ -1,4 +1,5 @@
 <launch>
+
   <arg name="load_params" default="true" />
   <arg name="use_global_planner" default="true"/>  
 
