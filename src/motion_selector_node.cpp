@@ -549,6 +549,7 @@ private:
 		if ((ros::Time::now() - last_point_cloud_received).toSec() > 0.1) {
 			ReactToSampledPointCloud();
 		}
+		motion_selector.UpdateCurrentAltitude(pose.pose.position.z);
 		//ROS_INFO("GOT POSE");
 
 		
@@ -761,10 +762,35 @@ private:
 		}
 		mutex.lock();
 		UpdateMotionLibraryVelocity(velocity_ortho_body_frame);
-		speed = velocity_ortho_body_frame.norm();											
+		speed = velocity_ortho_body_frame.norm();
+		MonitorProgress();
 		//UpdateTimeHorizon(speed);
 		UpdateMaxAcceleration(speed);
 		mutex.unlock();
+	}
+
+	ros::Time time_last_made_progress;
+	bool progress_initialized = false; 
+	bool making_progress;
+	double progress_timer = 3.0;
+	double velocity_progress_threshold = 0.5;
+	double yaw_progress_threshold = 30.0;
+	void MonitorProgress() {
+		if (!progress_initialized) {
+			time_last_made_progress = ros::Time::now();
+			progress_initialized = true;
+		}
+		if (speed > velocity_progress_threshold) {
+			time_last_made_progress = ros::Time::now();
+		}
+		double actual_bearing_azimuth_degrees = -pose_global_yaw * 180.0/M_PI;
+		double actual_bearing_error = bearing_azimuth_degrees - actual_bearing_azimuth_degrees;
+		if (abs(actual_bearing_error) > yaw_progress_threshold) {
+			time_last_made_progress = ros::Time::now();
+		}
+		if ((ros::Time::now() - time_last_made_progress).toSec() > progress_timer) {
+			std::cout << "NOT MAKING PROGRESS" << std::endl;
+		}
 	}
 
 	void UpdateMaxAcceleration(double speed) {

@@ -38,6 +38,7 @@ public:
 
   void SetNominalFlightAltitude(double flight_altitude) {this->nominal_altitude = flight_altitude;};
   void SetSoftTopSpeed(double top_speed) {this->soft_top_speed = top_speed;}
+  void UpdateCurrentAltitude(double current_altitude);
 
 private:
   
@@ -89,6 +90,7 @@ private:
 
   bool use_3d_library = true;
   double nominal_altitude = 1.5;
+  double current_altitude = 0.0;
 
   Vector3 last_desired_acceleration = Vector3(0,0,0);
 

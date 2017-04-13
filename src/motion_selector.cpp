@@ -82,7 +82,6 @@ size_t MotionSelector::getNumMotions() {
 void MotionSelector::computeBestEuclideanMotion(Vector3 const& carrot_body_frame, size_t &best_traj_index, Vector3 &desired_acceleration) {
   EvaluateCollisionProbabilities();
 
-
   EvaluateGoalProgress(carrot_body_frame); 
   EvaluateTerminalVelocityCost();
   if (use_3d_library) {EvaluateAltitudeCost();};
@@ -213,6 +212,8 @@ void MotionSelector::EvaluateGoalProgress(Vector3 const& carrot_body_frame) {
   double distance;
   for (auto motion = motion_iterator_begin; motion != motion_iterator_end; motion++) {
     final_motion_position = motion->getTerminalStopPosition(time_to_eval);
+    Vector3 carrot_body_frame_no_z = Vector3(carrot_body_frame(0), carrot_body_frame(1), 0.0);
+    final_motion_position(2) = 0.0;
     distance = (final_motion_position - carrot_body_frame).norm();
     goal_progress_evaluations.at(i) = initial_distance - distance; 
     i++;
@@ -235,17 +236,21 @@ void MotionSelector::EvaluateTerminalVelocityCost() {
   }
 };
 
+void MotionSelector::UpdateCurrentAltitude(double current_altitude_set) {
+  current_altitude = current_altitude_set;
+}
+
 void MotionSelector::EvaluateAltitudeCost() {
   std::vector<Motion>::const_iterator motion_iterator_begin = motion_library.GetMotionIteratorBegin();
   std::vector<Motion>::const_iterator motion_iterator_end = motion_library.GetMotionIteratorEnd();
   size_t i = 0;
-  double minimum_altitude = 0.7;
+  double minimum_altitude = 0.5;
   double maximum_altitude = 5.0;
   double final_altitude;
   for (auto motion = motion_iterator_begin; motion != motion_iterator_end; motion++) {
-    final_altitude = motion->getPosition(0.1)(2);
+    final_altitude = motion->getPosition(0.2)(2) + current_altitude;
     altitude_evaluations.at(i) = 0;
-    altitude_evaluations.at(i) -= 0.1 * (nominal_altitude - final_altitude) * (nominal_altitude - final_altitude);
+    altitude_evaluations.at(i) -= 0.2 * (nominal_altitude - final_altitude) * (nominal_altitude - final_altitude);
     if (final_altitude < minimum_altitude) {
       altitude_evaluations.at(i) -= 10.0*(final_altitude - minimum_altitude)*(final_altitude - minimum_altitude);
     }
