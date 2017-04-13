@@ -112,7 +112,6 @@ double DepthImageCollisionEvaluator::AddOutsideFOVPenalty(Vector3 robot_position
 double DepthImageCollisionEvaluator::computeProbabilityOfCollisionNPositionsKDTree_DepthImage(Vector3 const& robot_position, Vector3 const& sigma_robot_position, bool print) {
   double probability_of_collision = 0.0;
   if (1) {
-    my_kd_tree_depth_image.SearchForNearest<num_nearest_neighbors>(robot_position[0], robot_position[1], robot_position[2]);
 
     NanoMapKnnArgs args;
     args.query_point_current_body_frame = R_body_to_rdf_inverse*R*robot_position;
