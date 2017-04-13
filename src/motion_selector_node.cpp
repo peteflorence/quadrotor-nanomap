@@ -70,6 +70,7 @@ public:
         fla_utils::SafeGetParam(nh, "use_lidar_lite_z", use_lidar_lite_z);
         fla_utils::SafeGetParam(nh, "thrust_offset", offset);
         fla_utils::SafeGetParam(nh, "N_depth_image_history", N_depth_image_history);
+        if (use_3d_library) {A_dolphin=0.0;}
 
 		this->soft_top_speed_max = soft_top_speed;
 
