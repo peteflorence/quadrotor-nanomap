@@ -250,7 +250,6 @@ void MotionSelector::EvaluateAltitudeCost() {
   for (auto motion = motion_iterator_begin; motion != motion_iterator_end; motion++) {
     final_altitude = motion->getPosition(0.2)(2) + current_altitude;
     altitude_evaluations.at(i) = 0;
-    altitude_evaluations.at(i) -= 0.2 * (nominal_altitude - final_altitude) * (nominal_altitude - final_altitude);
     if (final_altitude < minimum_altitude) {
       altitude_evaluations.at(i) -= 10.0*(final_altitude - minimum_altitude)*(final_altitude - minimum_altitude);
     }
