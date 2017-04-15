@@ -359,11 +359,11 @@ private:
     		if (diff(1)<0.3) {diff(1) = -0.0;} 
     		if (diff(2)<0.3) {diff(2) = -0.0;}
     		
-    		std::cout << "------" << std::endl;
-    		std::cout << "pos " << pos << std::endl;
-    		std::cout << "last_plan_pos " << last_plan_pos << std::endl;
-    		std::cout << "actual " << actual << std::endl;
-    		std::cout << "diff " << diff << std::endl;
+    		// std::cout << "------" << std::endl;
+    		// std::cout << "pos " << pos << std::endl;
+    		// std::cout << "last_plan_pos " << last_plan_pos << std::endl;
+    		// std::cout << "actual " << actual << std::endl;
+    		// std::cout << "diff " << diff << std::endl;
 
     		//pos = pos + diff;
 
