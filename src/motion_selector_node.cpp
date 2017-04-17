@@ -112,7 +112,7 @@ public:
 		local_goal_sub = nh.subscribe("local_goal_topic", 1, &MotionSelectorNode::OnLocalGoal, this);
 		//value_grid_sub = nh.subscribe("/value_grid", 1, &MotionSelectorNode::OnValueGrid, this);
 		laser_scan_sub = nh.subscribe("laser_scan_topic", 1, &MotionSelectorNode::OnScan, this);
-		smoothed_pose_sub = nh.subscribe("/samros/keyposes", 100, &MotionSelectorNode::OnSmoothedPoses, this);
+		//smoothed_pose_sub = nh.subscribe("/samros/keyposes", 100, &MotionSelectorNode::OnSmoothedPoses, this);
 		height_above_ground_sub = nh.subscribe("/lidarlite_filter/height_above_ground", 1, &MotionSelectorNode::OnLidarlite, this);
 		command_sub = nh.subscribe("/flight/command", 1, &MotionSelectorNode::OnCommand, this);
 
@@ -789,7 +789,7 @@ private:
 			time_last_made_progress = ros::Time::now();
 		}
 		if ((ros::Time::now() - time_last_made_progress).toSec() > progress_timer) {
-			std::cout << "NOT MAKING PROGRESS" << std::endl;
+			//std::cout << "NOT MAKING PROGRESS" << std::endl;
 		}
 	}
 
