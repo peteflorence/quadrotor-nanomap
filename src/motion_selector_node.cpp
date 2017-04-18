@@ -37,6 +37,7 @@
 #include "motion_selector.h"
 #include "attitude_generator.h"
 #include "motion_visualizer.h"
+#include "nanomap/nanomap_visualizer.h"
 
 #include "fla_utils/param_utils.h"
 
@@ -83,6 +84,7 @@ public:
 		}
 
 		motion_visualizer.initialize(&motion_selector, nh, &best_traj_index, final_time);
+		nanomap_visualizer.Initialize(nh);
 		tf_listener_ = std::make_shared<tf2_ros::TransformListener>(tf_buffer_);
 	    for(;;){
 		    try {
@@ -314,6 +316,11 @@ public:
 		mutex.lock();
 		motion_visualizer.drawAll();
 		mutex.unlock();
+		DepthImageCollisionEvaluator* depth_image_collision_ptr = motion_selector.GetDepthImageCollisionEvaluatorPtr();
+		if (depth_image_collision_ptr != nullptr) {
+			std::vector<NanoMapPose> poses = depth_image_collision_ptr->nanomap.GetPointCloudPosesCurrentBody();
+			nanomap_visualizer.DrawFrustums(poses);
+		}
 	}
 
 private:
@@ -1225,6 +1232,7 @@ private:
 
 	MotionSelector motion_selector;
 	AttitudeGenerator attitude_generator;
+	NanoMapVisualizer nanomap_visualizer;
 
 	double pose_global_x = 0;
 	double pose_global_y = 0;
