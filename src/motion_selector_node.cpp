@@ -316,10 +316,13 @@ public:
 		mutex.lock();
 		motion_visualizer.drawAll();
 		mutex.unlock();
+		if (true) { // turns off nanomap visualization
+			return;
+		}
 		DepthImageCollisionEvaluator* depth_image_collision_ptr = motion_selector.GetDepthImageCollisionEvaluatorPtr();
 		if (depth_image_collision_ptr != nullptr) {
-			std::vector<NanoMapPose> poses = depth_image_collision_ptr->nanomap.GetPointCloudPosesCurrentBody();
-			nanomap_visualizer.DrawFrustums(poses);
+			std::vector<Matrix4> edges = depth_image_collision_ptr->nanomap.GetCurrentEdges();
+			nanomap_visualizer.DrawFrustums(edges);
 		}
 	}
 
