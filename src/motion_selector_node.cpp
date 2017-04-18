@@ -315,8 +315,8 @@ public:
 	void drawAll() {
 		mutex.lock();
 		motion_visualizer.drawAll();
-		mutex.unlock();
-		if (true) { // turns off nanomap visualization
+		if (false) { // turns off nanomap visualization
+			mutex.unlock();
 			return;
 		}
 		DepthImageCollisionEvaluator* depth_image_collision_ptr = motion_selector.GetDepthImageCollisionEvaluatorPtr();
@@ -324,6 +324,7 @@ public:
 			std::vector<Matrix4> edges = depth_image_collision_ptr->nanomap.GetCurrentEdges();
 			nanomap_visualizer.DrawFrustums(edges);
 		}
+		mutex.unlock();
 	}
 
 private:
@@ -557,6 +558,7 @@ private:
 
 	ros::Time last_pose_update;
 	void OnPose( geometry_msgs::PoseStamped const& pose ) {
+
 		if ((ros::Time::now() - last_point_cloud_received).toSec() > 0.1) {
 			ReactToSampledPointCloud();
 		}
@@ -600,6 +602,13 @@ private:
 		Vector3 pos = Vector3(pose.pose.position.x, pose.pose.position.y, pose.pose.position.z);
 		NanoMapTime nm_time(pose.header.stamp.sec, pose.header.stamp.nsec);
 		NanoMapPose nm_pose(pos, quat, nm_time);
+
+		mutex.lock();
+		Matrix4 transform = Eigen::Matrix4d::Identity();
+		transform.block<3,3>(0,0) = nm_pose.quaternion.toRotationMatrix();
+		transform.block<3,1>(0,3) = nm_pose.position;
+		nanomap_visualizer.SetLastPose(transform);
+		mutex.unlock();
 
 		DepthImageCollisionEvaluator* depth_image_collision_ptr = motion_selector.GetDepthImageCollisionEvaluatorPtr();
 		if (depth_image_collision_ptr != nullptr) {
