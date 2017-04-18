@@ -19,7 +19,7 @@ void MotionLibrary::InitializeLibrary(bool use_3d_library, double acceleration_i
 	// Then build up more motions by sampling over accelerations
 	std::vector<double> horizontal_accelerations = {initial_max_acceleration, 0.6*initial_max_acceleration, 0.4*initial_max_acceleration, 0.15*initial_max_acceleration};
 	std::vector<double> vertical_accelerations = {0.0};
-	size_t num_samples_around_circle = 8;
+	size_t num_samples_around_circle = 16;
 
 	if (use_3d_library) {
 		horizontal_accelerations.clear();

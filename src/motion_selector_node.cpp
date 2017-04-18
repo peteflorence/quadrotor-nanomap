@@ -70,7 +70,6 @@ public:
         fla_utils::SafeGetParam(nh, "use_lidar_lite_z", use_lidar_lite_z);
         fla_utils::SafeGetParam(nh, "thrust_offset", offset);
         fla_utils::SafeGetParam(nh, "N_depth_image_history", N_depth_image_history);
-        if (use_3d_library) {A_dolphin=0.0;}
 
 		this->soft_top_speed_max = soft_top_speed;
 
@@ -287,16 +286,13 @@ public:
 		Vector3 attitude_thrust_desired = attitude_generator.generateDesiredAttitudeThrust(desired_acceleration, forward_propagation_time);
 		SetThrustForLibrary(attitude_thrust_desired(2));
 		mutex.unlock();
-		if (use_3d_library) {
+
 			//AltitudeFeedbackOnBestMotion();
 			// pass to acl_fsw instead
 			mutex.lock();
 			PassToOuterLoop(desired_acceleration);
 			mutex.unlock();
-		}
-		else {
-			PublishAttitudeSetpoint(attitude_thrust_desired);
-		}
+			return;
 	}
 
 	void AltitudeFeedbackOnBestMotion() {
@@ -378,7 +374,12 @@ private:
 			//quad_goal.vel.z = vel(2);
 			//quad_goal.pos.x = pos(0);
 			//quad_goal.pos.y = pos(1);
-			quad_goal.pos.z = pos(2);
+			if (use_3d_library) {
+				quad_goal.pos.z = pos(2);
+			} else {
+				quad_goal.pos.z = flight_altitude;
+			}
+
 
 			last_plan_pos = pos;
 			last_plan_vel = vel;
