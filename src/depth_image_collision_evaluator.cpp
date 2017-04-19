@@ -152,7 +152,7 @@ double DepthImageCollisionEvaluator::computeProbabilityOfCollisionNPositionsKDTr
     }
 
     if (reply.fov_status != NanoMapFovStatus::not_initialized) {
-      probability_of_collision = computeProbabilityOfCollisionNPositionsKDTree(reply.query_point_in_frame_id, reply.axis_aligned_linear_covariance, pcl_vector);  
+      probability_of_collision = computeProbabilityOfCollisionNPositionsKDTree(reply.query_point_in_frame_id, reply.axis_aligned_linear_covariance, pcl_vector, true);  
     }
     else {
       probability_of_collision = 0.0;
@@ -190,13 +190,13 @@ double DepthImageCollisionEvaluator::computeProbabilityOfCollisionNPositionsKDTr
 double DepthImageCollisionEvaluator::computeProbabilityOfCollisionNPositionsKDTree_Laser(Vector3 const& robot_position, Vector3 const& sigma_robot_position) {
   if (xyz_laser_cloud_ptr != nullptr) {
     my_kd_tree_laser.SearchForNearest<num_nearest_neighbors>(robot_position[0], robot_position[1], robot_position[2]);
-    double probability_of_collision = computeProbabilityOfCollisionNPositionsKDTree(robot_position, sigma_robot_position, my_kd_tree_laser.closest_pts);
+    double probability_of_collision = computeProbabilityOfCollisionNPositionsKDTree(robot_position, sigma_robot_position, my_kd_tree_laser.closest_pts, false);
     return ThresholdHard(probability_of_collision);
   }
   return 0.0;
 }
 
-double DepthImageCollisionEvaluator::computeProbabilityOfCollisionNPositionsKDTree(Vector3 const& robot_position, Vector3 const& sigma_robot_position, std::vector<pcl::PointXYZ> const& closest_pts) {
+double DepthImageCollisionEvaluator::computeProbabilityOfCollisionNPositionsKDTree(Vector3 const& robot_position, Vector3 const& sigma_robot_position, std::vector<pcl::PointXYZ> const& closest_pts, bool interpolate) {
   double probability_no_collision = 1.0;
   double radius = 0.8;
   
@@ -207,12 +207,14 @@ double DepthImageCollisionEvaluator::computeProbabilityOfCollisionNPositionsKDTr
       Vector3 depth_position = Vector3(first_point.x, first_point.y, first_point.z);
 
       // interpolate towards robot
-      double norm = (robot_position - depth_position).norm();
-      if (norm < radius) {
-        depth_position = robot_position;
-      }
-      else {
-        depth_position = depth_position + (robot_position - depth_position)/norm*radius;
+      if (interpolate) {
+        double norm = (robot_position - depth_position).norm();
+        if (norm < radius) {
+          depth_position = robot_position;
+        }
+        else {
+          depth_position = depth_position + (robot_position - depth_position)/norm*radius;
+        }
       }
 
       Vector3 sigma_robot_position_nn = sigma_robot_position*0.0;
