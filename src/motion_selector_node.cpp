@@ -86,17 +86,7 @@ public:
 		motion_visualizer.initialize(&motion_selector, nh, &best_traj_index, final_time);
 		nanomap_visualizer.Initialize(nh);
 		tf_listener_ = std::make_shared<tf2_ros::TransformListener>(tf_buffer_);
-	    for(;;){
-		    try {
-
-		      tf_buffer_.lookupTransform("world", "body", 
-		                                    ros::Time(0), ros::Duration(30.0));
-		    } catch (tf2::TransformException &ex) {
-		      continue;
-		    }
-
-		    break;
-		}
+	    WaitForTransforms("world", "body");
 		last_pose_update = ros::Time::now();
 		PublishOrthoBodyTransform(0.0, 0.0); // initializes ortho_body transform to be with 0, 0 roll, pitch
 		srand ( time(NULL) ); //initialize the random seed
@@ -124,6 +114,18 @@ public:
 		attitude_setpoint_visualization_pub = nh.advertise<geometry_msgs::PoseStamped>("setpoint_visualization_topic", 1);
 		status_pub = nh.advertise<fla_msgs::ProcessStatus>("status_topic", 0);
 		quad_goal_pub = nh.advertise<acl_fsw::QuadGoal>("/FLA_ACL02/goal", 1);
+ 	}
+
+ 	void WaitForTransforms(std::string first, std::string second) {
+ 		for(;;){
+		    try {
+		      tf_buffer_.lookupTransform(first, second, 
+		                                    ros::Time(0), ros::Duration(30.0));
+		    } catch (tf2::TransformException &ex) {
+		      continue;
+		    }
+		    break;
+		}
  	}
 
 	void OnMaxSpeed(const std_msgs::Float64 msg) {
@@ -203,6 +205,11 @@ public:
 	    	SetYawFromMotion();
 	    } 
 	    mutex.unlock();
+	    auto t2 = std::chrono::high_resolution_clock::now();
+	    std::cout << "ReactToSampledPointCloud took "
+      		<< std::chrono::duration_cast<std::chrono::microseconds>(t2-t1).count()
+      		<< " microseconds\n";
+
 
 		//PublishCurrentAttitudeSetpoint();
 	}
