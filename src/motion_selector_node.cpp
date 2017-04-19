@@ -61,6 +61,7 @@ public:
         fla_utils::SafeGetParam(nh, "acceleration_interpolation_max", acceleration_interpolation_max);
         fla_utils::SafeGetParam(nh, "flight_altitude", flight_altitude);
         fla_utils::SafeGetParam(nh, "use_3d_library", use_3d_library);
+        fla_utils::SafeGetParam(nh, "use_acl", use_acl);
         fla_utils::SafeGetParam(nh, "max_e_stop_pitch_degrees", max_e_stop_pitch_degrees);
         fla_utils::SafeGetParam(nh, "laser_z_below_project_up", laser_z_below_project_up);
         fla_utils::SafeGetParam(nh, "A_dolphin", A_dolphin);
