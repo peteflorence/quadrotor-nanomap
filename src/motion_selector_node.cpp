@@ -143,7 +143,6 @@ public:
 			depth_image_collision_ptr->setCameraInfo(bin, width, height, K_camera_info);
 			got_camera_info = true;
 			ROS_WARN_THROTTLE(1.0, "Received camera info");
-			//std::cout << "K_camera_info " << K_camera_info << std::endl;
 		}
 		depth_sensor_frame = msg.header.frame_id;
 	}
@@ -784,37 +783,6 @@ private:
 		}
 	}
 
-	void UpdateValueGrid(nav_msgs::OccupancyGrid value_grid_msg) {
-		auto t1 = std::chrono::high_resolution_clock::now();
-
-		ValueGridEvaluator* value_grid_evaluator_ptr = motion_selector.GetValueGridEvaluatorPtr();
-		if (value_grid_evaluator_ptr != nullptr) {
-			ValueGrid* value_grid_ptr = value_grid_evaluator_ptr->GetValueGridPtr();
-			if (value_grid_ptr != nullptr) {
-
-				value_grid_ptr->SetResolution(value_grid_msg.info.resolution);
-				value_grid_ptr->SetSize(value_grid_msg.info.width, value_grid_msg.info.height);
-				value_grid_ptr->SetOrigin(value_grid_msg.info.origin.position.x, value_grid_msg.info.origin.position.y);
-				value_grid_ptr->SetValues(value_grid_msg.data);
-
-				//motion_selector.PassInUpdatedValueGrid(&value_grid);
-				auto t2 = std::chrono::high_resolution_clock::now();
-				std::cout << "Whole value grid construction took "
-		      		<< std::chrono::duration_cast<std::chrono::microseconds>(t2-t1).count()
-		      		<< " microseconds\n";
-
-				std::cout << value_grid_ptr->GetValueOfPosition(carrot_world_frame) << " is value of goal" << std::endl;
-				std::cout << value_grid_ptr->GetValueOfPosition(Vector3(0,0,0)) << " is value of world origin" << std::endl;
-				std::cout << value_grid_ptr->GetValueOfPosition(Vector3(0,-2.0,0)) << " is value of 1.5 to my right" << std::endl;
-			}
-		}
-	}
-
-	void OnValueGrid(nav_msgs::OccupancyGrid value_grid_msg) {
-		ROS_INFO("GOT VALUE GRID");
-		UpdateValueGrid(value_grid_msg);
-	}
-
 	void OnSmoothedPoses(nav_msgs::Path path) {
 		DepthImageCollisionEvaluator* depth_image_collision_ptr = motion_selector.GetDepthImageCollisionEvaluatorPtr();
 		if (depth_image_collision_ptr != nullptr) {
@@ -839,33 +807,20 @@ private:
 	// dolphin_altitude(t) = A * cos(t * 2pi/T) + flight_altitude
 	// A = amplitude
 	// T = period
-        double A_dolphin = 0.5;
-        double T_dolphin = 3.0;
-        double dolphin_acceleration_threshold = 2.0;
-        double cooldown_duration = 3.0;
+    double A_dolphin = 0.5;
+    double T_dolphin = 3.0;
+    double dolphin_acceleration_threshold = 2.0;
+    double cooldown_duration = 3.0;
 
-        double time_of_last_dolphin_query = 0;
-        bool dolphin_initialized = false;
-        double time_of_start_cooldown = 0;
+    double time_of_last_dolphin_query = 0;
+    bool dolphin_initialized = false;
+    double time_of_start_cooldown = 0;
 
-        double dolphin_offset = 0.0;
+    double dolphin_offset = 0.0;
 
-        size_t cooldown_hit_counter = 0;
-        size_t cooldown_hit_threshold = 20;
-        bool in_cooldown = false;
-
-
-    // John-style Dolphin
-
-    // if aggressive action chosen
-    // dolphin cooldown timer = 0
-
-    //if timer > dolphin_cooldown_time 
-    	//dolphin_offset = sin(t)
-    //else
-    	//dolphin_offset *= 0.95;
-    	//reset dolphin phase 
-
+    size_t cooldown_hit_counter = 0;
+    size_t cooldown_hit_threshold = 20;
+    bool in_cooldown = false;
 
 	double DolphinStrokeDetermineAltitude(double speed) {
 		if (!dolphin_initialized) {
@@ -920,12 +875,10 @@ private:
 	}
 
 
-	void OnLocalGoal(geometry_msgs::PoseStamped const& local_goal) {
-		//ROS_INFO("GOT LOCAL GOAL");		
+	void OnLocalGoal(geometry_msgs::PoseStamped const& local_goal) {		
 		carrot_world_frame(0) = local_goal.pose.position.x; 
 		carrot_world_frame(1) = local_goal.pose.position.y;
 		carrot_world_frame(2) = local_goal.pose.position.z;
-
 		UpdateCarrotOrthoBodyFrame();
 		visualization_msgs::Marker marker;
 		marker.header.frame_id = "ortho_body";
@@ -940,7 +893,7 @@ private:
 		marker.scale.x = 0.5;
 		marker.scale.y = 0.5;
 		marker.scale.z = 0.5;
-		marker.color.a = 0.5; // Don't forget to set the alpha!
+		marker.color.a = 0.5;
 		marker.color.r = 0.9;
 		marker.color.g = 0.4;
 		marker.color.b = 0.0;
@@ -949,7 +902,6 @@ private:
 
 	void TransformToOrthoBodyPointCloud(std::string const& source_frame, const sensor_msgs::PointCloud2ConstPtr msg, pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud_out){
 	  	sensor_msgs::PointCloud2 msg_out;
-
 	  	geometry_msgs::TransformStamped tf;
     	try {
 	     	tf = tf_buffer_.lookupTransform("ortho_body", source_frame,
@@ -958,10 +910,8 @@ private:
 	     	 	ROS_ERROR("8 %s", ex.what());
       	return;
     	}
-
 	  	Eigen::Quaternionf quat(tf.transform.rotation.w, tf.transform.rotation.x, tf.transform.rotation.y, tf.transform.rotation.z);
 	    Eigen::Matrix3f R = quat.toRotationMatrix();
-
 	    Eigen::Vector4f T = Eigen::Vector4f(tf.transform.translation.x,tf.transform.translation.y,tf.transform.translation.z, 1.0); 
 
      	Eigen::Matrix4f transform_eigen; // Your Transformation Matrix
@@ -981,35 +931,22 @@ private:
 
 	ros::Time last_point_cloud_received;
 	void OnDepthImage(const sensor_msgs::PointCloud2ConstPtr& point_cloud_msg) {
-		// ROS_INFO("GOT POINT CLOUD");
 		if (UseDepthImage()) {
 			last_point_cloud_received = ros::Time::now();
 			DepthImageCollisionEvaluator* depth_image_collision_ptr = motion_selector.GetDepthImageCollisionEvaluatorPtr();
-
 			if (depth_image_collision_ptr != nullptr) {
-
 		    	Matrix3 R = GetOrthoBodyToRDFRotationMatrix();
-		    	//std::cout << "ortho_body_to_rdf " << R << std::endl;
-
 		    	Matrix3 R_set = GetBodyToRDFRotationMatrix();
-				//std::cout << "R_set " << R_set << std::endl;
 				depth_image_collision_ptr->nanomap.SetBodyToRdf(R_set);
-
 				depth_image_collision_ptr->UpdateRotationMatrix(R);
 				depth_image_collision_ptr->UpdateBodyToRdf(R_set);
 				if(use_depth_image) {
-
 					pcl::PCLPointCloud2 cloud2_rdf;
 					pcl_conversions::toPCL(*point_cloud_msg, cloud2_rdf);
 					pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_rdf(new pcl::PointCloud<pcl::PointXYZ>);
 					pcl::fromPCLPointCloud2(cloud2_rdf,*cloud_rdf);
-
 					NanoMapTime nm_time(point_cloud_msg->header.stamp.sec, point_cloud_msg->header.stamp.nsec);
 					depth_image_collision_ptr->nanomap.AddPointCloud(cloud_rdf, nm_time, point_cloud_msg->header.seq);
-
-					//pcl::PointCloud<pcl::PointXYZ>::Ptr ortho_body_cloud(new pcl::PointCloud<pcl::PointXYZ>);
-		    		//TransformToOrthoBodyPointCloud(depth_sensor_frame, point_cloud_msg, ortho_body_cloud);
-					//depth_image_collision_ptr->UpdatePointCloudPtr(ortho_body_cloud);
 				}
 			}
 			ReactToSampledPointCloud();
@@ -1099,7 +1036,6 @@ private:
 	ros::Subscriber depth_image_sub;
 	ros::Subscriber global_goal_sub;
 	ros::Subscriber local_goal_sub;
-	ros::Subscriber value_grid_sub;
 	ros::Subscriber laser_scan_sub;
 	ros::Subscriber max_speed_sub;
 	ros::Subscriber smoothed_pose_sub;
