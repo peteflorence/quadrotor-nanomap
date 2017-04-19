@@ -198,7 +198,7 @@ public:
       		<< std::chrono::duration_cast<std::chrono::microseconds>(t2-t1).count()
       		<< " microseconds\n";
 
-		//PublishCurrentAttitudeSetpoint();
+		if (!use_acl){PublishCurrentAttitudeSetpoint();}
 	}
 
 	void ExecuteEStop() {
@@ -279,10 +279,9 @@ public:
 		Vector3 attitude_thrust_desired = attitude_generator.generateDesiredAttitudeThrust(desired_acceleration, forward_propagation_time);
 		SetThrustForLibrary(attitude_thrust_desired(2));
 
-		//AltitudeFeedbackOnBestMotion();
-		// pass to acl_fsw instead
-		PassToOuterLoop(desired_acceleration);
-		return;
+		if (use_acl){PassToOuterLoop(desired_acceleration);}
+		else if (use_3d_library){AltitudeFeedbackOnBestMotion();}
+		else {PublishAttitudeSetpoint(attitude_thrust_desired);}
 	}
 
 	void AltitudeFeedbackOnBestMotion() {
@@ -1045,6 +1044,7 @@ private:
 	bool use_depth_image = true;
 	bool use_lidar_lite_z = false;
 	bool use_3d_library = false;
+	bool use_acl = false;
 	double flight_altitude = 1.0;
 
 	bool executing_e_stop = false;
