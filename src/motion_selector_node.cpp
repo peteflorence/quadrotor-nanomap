@@ -281,7 +281,7 @@ public:
 
 		if (use_acl){PassToOuterLoop(desired_acceleration);}
 		else if (use_3d_library){AltitudeFeedbackOnBestMotion();}
-		else {PublishAttitudeSetpoint(attitude_thrust_desired);}
+		if (!use_acl){PublishAttitudeSetpoint(attitude_thrust_desired);}
 	}
 
 	void AltitudeFeedbackOnBestMotion() {
@@ -648,7 +648,7 @@ private:
 		attitude_generator.setZvelocity(twist.twist.linear.z);
 		Vector3 velocity_world_frame(twist.twist.linear.x, twist.twist.linear.y, twist.twist.linear.z);
 		Vector3 velocity_ortho_body_frame = TransformWorldToOrthoBody(velocity_world_frame);
-		if (!use_3d_library) {
+		if (!use_3d_library || !use_acl) {
 			velocity_ortho_body_frame(2) = 0.0;  // WARNING for 2D only
 		}
 		UpdateMotionLibraryVelocity(velocity_ortho_body_frame);
