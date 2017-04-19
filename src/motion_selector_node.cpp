@@ -327,8 +327,8 @@ private:
 			quad_goal.xy_mode = acl_fsw::QuadGoal::MODE_ACCEL;
 			quad_goal.z_mode = acl_fsw::QuadGoal::MODE_POS;
 
-			Vector3 pos = TransformOrthoBodyToWorld(best_motion.getPosition(0.1));
-			Vector3 vel = RotateOrthoBodyToWorld(best_motion.getVelocity(0.01));
+			Vector3 pos = TransformOrthoBodyToWorld(best_motion.getPosition(0.5));
+			Vector3 vel = RotateOrthoBodyToWorld(best_motion.getVelocity(0.5));
 			Vector3 accel = RotateOrthoBodyToWorld(best_motion.getAcceleration());
 			Vector3 jerk = RotateOrthoBodyToWorld(best_motion.getJerk());
 				
@@ -1044,7 +1044,7 @@ private:
 	bool use_depth_image = true;
 	bool use_lidar_lite_z = false;
 	bool use_3d_library = false;
-	bool use_acl = false;
+	bool use_acl = true;
 	double flight_altitude = 1.0;
 
 	bool executing_e_stop = false;
