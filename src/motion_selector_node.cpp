@@ -347,7 +347,9 @@ private:
 				quad_goal.pos.z = pos(2);
 				quad_goal.vel.z = vel(2);
 			} else {
-				quad_goal.pos.z = flight_altitude;
+				double dolphin_altitude = DolphinStrokeDetermineAltitude(speed);
+				carrot_world_frame(2) = dolphin_altitude; 
+				quad_goal.pos.z = dolphin_altitude;
 			}
 
 			UpdateYaw();
