@@ -193,10 +193,10 @@ public:
 	    else if (yaw_on) {
 	    	SetYawFromMotion();
 	    } 
-	    auto t2 = std::chrono::high_resolution_clock::now();
-	    std::cout << "ReactToSampledPointCloud took "
-      		<< std::chrono::duration_cast<std::chrono::microseconds>(t2-t1).count()
-      		<< " microseconds\n";
+	    // auto t2 = std::chrono::high_resolution_clock::now();
+	    // std::cout << "ReactToSampledPointCloud took "
+     //  		<< std::chrono::duration_cast<std::chrono::microseconds>(t2-t1).count()
+     //  		<< " microseconds\n";
 
 		if (!use_acl){PublishCurrentAttitudeSetpoint();}
 	}
@@ -288,7 +288,7 @@ public:
 		MotionLibrary* motion_library_ptr = motion_selector.GetMotionLibraryPtr();
 		if (motion_library_ptr != nullptr) {
 				Motion best_motion = motion_library_ptr->getMotionFromIndex(best_traj_index);
-				Vector3 best_motion_position_ortho_body =  best_motion.getPosition(0.5);
+				Vector3 best_motion_position_ortho_body =  best_motion.getPosition(1.0);
 				Vector3 best_motion_position_world = TransformOrthoBodyToWorld(best_motion_position_ortho_body);
 				double new_z_setpoint = best_motion_position_world(2);
 				attitude_generator.setZsetpoint(new_z_setpoint);
