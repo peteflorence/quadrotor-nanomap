@@ -61,20 +61,6 @@ public:
   return motions.end(); 
   };
 
-  void setInitialAccelerationLASER(Vector3 const& initial_acceleration_laser_frame);
-  void setInitialVelocityLASER(Vector3 const& initial_velocity_laser_frame);
-
-  Vector3 getLASERSigmaAtTime(double const& t);
-  Vector3 getLASERInverseSigmaAtTime(double const& t);
-
-  void setInitialAccelerationRDF(Vector3 const& initial_acceleration_laser_frame);
-  void setInitialVelocityRDF(Vector3 const& initial_velocity_laser_frame);
-
-  Vector3 getRDFSigmaAtTime(double const& t) const;
-  Vector3 getRDFInverseSigmaAtTime(double const& t) const;
-
-  std::vector<Vector3> getRDFSampledInitialVelocity(size_t n);
-
   double getNewMaxAcceleration() const;
 
 

@@ -514,16 +514,6 @@ private:
 		attitude_generator.UpdateRollPitch(roll, pitch);
 	}
 
-	void UpdateLaserRDFFramesFromPose() {
-		transformAccelerationsIntoLaserRDFFrames();
-		MotionLibrary* motion_library_ptr = motion_selector.GetMotionLibraryPtr();
-    	if (motion_library_ptr != nullptr) {
-    		Vector3 initial_acceleration = motion_library_ptr->getInitialAcceleration();
-			motion_library_ptr->setInitialAccelerationLASER(transformOrthoBodyIntoLaserFrame(initial_acceleration));
-			motion_library_ptr->setInitialAccelerationRDF(transformOrthoBodyIntoRDFFrame(initial_acceleration));
-		}
-	}
-
 	void OnLidarlite(sensor_msgs::Range const& msg) {
 		if (use_lidar_lite_z) {
 			attitude_generator.setZ(msg.range);
@@ -553,7 +543,6 @@ private:
 		UpdateAttitudeGeneratorRollPitch(roll, pitch);
 		PublishOrthoBodyTransform(roll, pitch);
 		UpdateCarrotOrthoBodyFrame();
-		UpdateLaserRDFFramesFromPose();
 
 		double dolphin_altitude = DolphinStrokeDetermineAltitude(speed);
 		if (!use_3d_library) {
@@ -604,45 +593,6 @@ private:
 		pose_global_y = y;
 		pose_global_z = z;
 		pose_global_yaw = yaw;
-	}
-
-	void transformAccelerationsIntoLaserRDFFrames() {
-		MotionLibrary* motion_library_ptr = motion_selector.GetMotionLibraryPtr();
-		if (motion_library_ptr != nullptr) {
-
-			std::vector<Motion>::iterator motion_iterator_begin = motion_library_ptr->GetMotionNonConstIteratorBegin();
-	  		std::vector<Motion>::iterator motion_iterator_end = motion_library_ptr->GetMotionNonConstIteratorEnd();
-
-	  		Vector3 acceleration_ortho_body;
-			Vector3 acceleration_laser_frame;
-			Vector3 acceleration_rdf_frame;
-
-
-	  		for (auto motion = motion_iterator_begin; motion != motion_iterator_end; motion++) {
-	  			acceleration_ortho_body = motion->getAcceleration();
-
-	  			acceleration_laser_frame = transformOrthoBodyIntoLaserFrame(acceleration_ortho_body);
-	  			motion->setAccelerationLASER(acceleration_laser_frame);
-
-	  			acceleration_rdf_frame = transformOrthoBodyIntoRDFFrame(acceleration_ortho_body);
-	  			motion->setAccelerationRDF(acceleration_rdf_frame);
-	  		} 
-	  	}
-	}
-
-	Vector3 transformOrthoBodyIntoLaserFrame(Vector3 const& ortho_body_vector) {
-		geometry_msgs::TransformStamped tf;
-    	try {
-     		tf = tf_buffer_.lookupTransform("laser", "ortho_body", 
-                                    ros::Time(0), ros::Duration(1/30.0));
-   		} catch (tf2::TransformException &ex) {
-     	 	ROS_ERROR("ID 3 %s", ex.what());
-      	return Vector3(0,0,0);
-    	}
-    	geometry_msgs::PoseStamped pose_ortho_body_vector = PoseFromVector3(ortho_body_vector, "ortho_body");
-    	geometry_msgs::PoseStamped pose_vector_laser_frame = PoseFromVector3(Vector3(0,0,0), "laser");
-    	tf2::doTransform(pose_ortho_body_vector, pose_vector_laser_frame, tf);
-    	return VectorFromPose(pose_vector_laser_frame);
 	}
 
 	Vector3 transformOrthoBodyIntoRDFFrame(Vector3 const& ortho_body_vector) {
@@ -732,8 +682,6 @@ private:
 		MotionLibrary* motion_library_ptr = motion_selector.GetMotionLibraryPtr();
 		if (motion_library_ptr != nullptr) {
 			motion_library_ptr->setInitialVelocity(velocity_ortho_body_frame);
-			motion_library_ptr->setInitialVelocityLASER(transformOrthoBodyIntoLaserFrame(velocity_ortho_body_frame));
-			motion_library_ptr->setInitialVelocityRDF(transformOrthoBodyIntoRDFFrame(velocity_ortho_body_frame));
 		}
 	}
 
@@ -825,20 +773,13 @@ private:
 
 
 	void OnScan(sensor_msgs::PointCloud2ConstPtr const& laser_point_cloud_msg) {
-		//ROS_INFO("GOT SCAN");
 		DepthImageCollisionEvaluator* depth_image_collision_ptr = motion_selector.GetDepthImageCollisionEvaluatorPtr();
-
 		if (depth_image_collision_ptr != nullptr) {
-
-			//sensor_msgs::PointCloud2ConstPtr laser_point_cloud_msg_ptr(laser_point_cloud_msg);
-			
 			pcl::PointCloud<pcl::PointXYZ>::Ptr ortho_body_cloud(new pcl::PointCloud<pcl::PointXYZ>);
 		    TransformToOrthoBodyPointCloud("laser", laser_point_cloud_msg, ortho_body_cloud);
-
 		    if (!use_3d_library) {
 		     	ProjectOrthoBodyLaserPointCloud(ortho_body_cloud);
 		    }
-
 			depth_image_collision_ptr->UpdateLaserPointCloudPtr(ortho_body_cloud);
 		}
 	}
