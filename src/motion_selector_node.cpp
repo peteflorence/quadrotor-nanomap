@@ -314,8 +314,6 @@ public:
 
 private:
 
-	Vector3 last_plan_pos = Vector3(0,0,0);
-	Vector3 last_plan_vel = Vector3(0,0,0);
 	void PassToOuterLoop(Vector3 desired_acceleration_setpoint) {
 		if (!motion_primitives_live) {return;}
 
@@ -330,35 +328,11 @@ private:
 			quad_goal.xy_mode = acl_fsw::QuadGoal::MODE_ACCEL;
 			quad_goal.z_mode = acl_fsw::QuadGoal::MODE_POS;
 
-			Vector3 pos = TransformOrthoBodyToWorld(best_motion.getPosition(0.2));
+			Vector3 pos = TransformOrthoBodyToWorld(best_motion.getPosition(0.1));
 			Vector3 vel = RotateOrthoBodyToWorld(best_motion.getVelocity(0.01));
 			Vector3 accel = RotateOrthoBodyToWorld(best_motion.getAcceleration());
 			Vector3 jerk = RotateOrthoBodyToWorld(best_motion.getJerk());
-			
-
-			// adjust for plan
-    	
-    		//actual
-    		Vector3 actual = Vector3(pose_global_x,pose_global_y,pose_global_z);
-    		// planned
-    		// add in the diff between planned and actual
-    		Vector3 diff = last_plan_pos - actual;
-    		if (diff(0)>0.3) {diff(0) = 0.0;} 
-    		if (diff(1)>0.3) {diff(1) = 0.0;} 
-    		if (diff(2)>0.3) {diff(2) = 0.0;}
-
-    		if (diff(0)<0.3) {diff(0) = -0.0;} 
-    		if (diff(1)<0.3) {diff(1) = -0.0;} 
-    		if (diff(2)<0.3) {diff(2) = -0.0;}
-    		
-    		// std::cout << "------" << std::endl;
-    		// std::cout << "pos " << pos << std::endl;
-    		// std::cout << "last_plan_pos " << last_plan_pos << std::endl;
-    		// std::cout << "actual " << actual << std::endl;
-    		// std::cout << "diff " << diff << std::endl;
-
-    		//pos = pos + diff;
-
+				
 			quad_goal.jerk.x = jerk(0);
 			quad_goal.jerk.y = jerk(1);
 			quad_goal.jerk.z = jerk(2);
@@ -367,31 +341,17 @@ private:
 			quad_goal.accel.z = accel(2);
 			//quad_goal.vel.x = vel(0);
 			//quad_goal.vel.y = vel(1);
-			//quad_goal.vel.z = vel(2);
 			//quad_goal.pos.x = pos(0);
 			//quad_goal.pos.y = pos(1);
 			if (use_3d_library) {
 				quad_goal.pos.z = pos(2);
+				quad_goal.vel.z = vel(2);
 			} else {
 				quad_goal.pos.z = flight_altitude;
 			}
 
-
-			last_plan_pos = pos;
-			last_plan_vel = vel;
-
 			UpdateYaw();
 			quad_goal.yaw = -set_bearing_azimuth_degrees*M_PI/180.0;
-			// set_bearing_azimuth_degrees = set_bearing_azimuth_degrees+0.5;
-
-			// if (set_bearing_azimuth_degrees > 180.0) {
-			// 	set_bearing_azimuth_degrees -= 360.0;
-			// }
-			// if (set_bearing_azimuth_degrees < -180.0) {
-			// 	set_bearing_azimuth_degrees += 360.0;
-			// }
-			//quad_goal.yaw = 0;
-
 			quad_goal_pub.publish(quad_goal);
 		}
 	}

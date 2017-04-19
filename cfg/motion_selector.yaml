@@ -12,4 +12,4 @@ A_dolphin: 0.4 # m
 T_dolphin: 3.0 # s
 use_lidar_lite_z: false
 thrust_offset: 0.605 ## 0.75 for 5S ## 0.605 for 6S
-N_depth_image_history: 1
+N_depth_image_history: 150
