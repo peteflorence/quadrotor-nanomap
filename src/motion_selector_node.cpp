@@ -465,18 +465,6 @@ private:
 		return 180.0/M_PI*atan2(-(final_position(1) - pose_global_y), final_position(0) - pose_global_x);	
 	}
 	
-
-	void SetGoalFromBearing() {
-		bool go;
-		nh.param("go", go, false);
-		if (go) {
-			carrot_ortho_body_frame << 100, 0, 0;
-		}
-		else if (carrot_ortho_body_frame(0) == 100) {
-			carrot_ortho_body_frame << 5, 0, 0;
-		}
-	}
-
 	void UpdateMotionLibraryRollPitch(double roll, double pitch) {
 		MotionLibrary* motion_library_ptr = motion_selector.GetMotionLibraryPtr();
 		if (motion_library_ptr != nullptr) {
