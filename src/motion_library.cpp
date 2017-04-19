@@ -28,8 +28,8 @@ void MotionLibrary::InitializeLibrary(bool use_3d_library, double acceleration_i
 		horizontal_accelerations.push_back(0.15*initial_max_acceleration);
 		num_samples_around_circle = 8;
 		vertical_accelerations.push_back(-2.0);
-		vertical_accelerations.push_back(-0.75);
-		vertical_accelerations.push_back(0.75);
+		vertical_accelerations.push_back(-0.5);
+		vertical_accelerations.push_back(0.5);
 		vertical_accelerations.push_back(2.0);
 	}
 

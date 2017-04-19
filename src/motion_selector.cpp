@@ -212,8 +212,7 @@ void MotionSelector::EvaluateGoalProgress(Vector3 const& carrot_body_frame) {
   double distance;
   for (auto motion = motion_iterator_begin; motion != motion_iterator_end; motion++) {
     final_motion_position = motion->getTerminalStopPosition(time_to_eval);
-    Vector3 carrot_body_frame_no_z = Vector3(carrot_body_frame(0), carrot_body_frame(1), 0.0);
-    final_motion_position(2) = 0.0;
+    final_motion_position(2) = motion->getPosition(time_to_eval)(2);
     distance = (final_motion_position - carrot_body_frame).norm();
     goal_progress_evaluations.at(i) = initial_distance - distance; 
     i++;

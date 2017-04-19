@@ -583,8 +583,8 @@ private:
 		UpdateLaserRDFFramesFromPose();
 
 		double dolphin_altitude = DolphinStrokeDetermineAltitude(speed);
-		carrot_world_frame(2) = dolphin_altitude; 
 		if (!use_3d_library) {
+			carrot_world_frame(2) = dolphin_altitude; 
 			attitude_generator.setZsetpoint(dolphin_altitude);
 		}
 
@@ -1022,6 +1022,7 @@ private:
 		
 		carrot_world_frame(0) = local_goal.pose.position.x; 
 		carrot_world_frame(1) = local_goal.pose.position.y;
+		carrot_world_frame(2) = local_goal.pose.position.z;
 
 		UpdateCarrotOrthoBodyFrame();
 		mutex.unlock();
