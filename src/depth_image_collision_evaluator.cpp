@@ -193,8 +193,10 @@ double DepthImageCollisionEvaluator::computeProbabilityOfCollisionNPositionsKDTr
 
       // interpolate towards robot
       double norm = (robot_position - depth_position).norm();
-      if (norm >= interpolation_radius) {
+      if (norm >= 2*interpolation_radius) {
         depth_position = depth_position + (robot_position - depth_position)/norm*interpolation_radius;
+      } else {
+        depth_position = depth_position + (robot_position - depth_position)*0.5;
       }
 
       Vector3 sigma_robot_position_nn = sigma_robot_position*0.0;
