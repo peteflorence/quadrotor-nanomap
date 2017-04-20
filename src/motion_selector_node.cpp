@@ -99,7 +99,7 @@ public:
         max_speed_sub = nh.subscribe("/max_speed", 1, &MotionSelectorNode::OnMaxSpeed, this);
 		local_goal_sub = nh.subscribe("local_goal_topic", 1, &MotionSelectorNode::OnLocalGoal, this);
 		laser_scan_sub = nh.subscribe("laser_scan_topic", 1, &MotionSelectorNode::OnScan, this);
-		//smoothed_pose_sub = nh.subscribe("/samros/keyposes", 100, &MotionSelectorNode::OnSmoothedPoses, this);
+		smoothed_pose_sub = nh.subscribe("/samros/keyposes", 100, &MotionSelectorNode::OnSmoothedPoses, this);
 		height_above_ground_sub = nh.subscribe("/lidarlite_filter/height_above_ground", 1, &MotionSelectorNode::OnLidarlite, this);
 		command_sub = nh.subscribe("/flight/command", 1, &MotionSelectorNode::OnCommand, this);
 
