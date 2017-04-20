@@ -363,8 +363,6 @@ private:
 				quad_goal.xy_mode = acl_fsw::QuadGoal::MODE_VEL;
 				quad_goal.jerk.x = 0;
 				quad_goal.jerk.y = 0;
-				quad_goal.accel.x = 0;
-				quad_goal.accel.y = 0;
 				quad_goal.vel.x = 0;
 				quad_goal.vel.y = 0;
 			}
@@ -438,12 +436,13 @@ private:
 
 				// else, slow down
 				motion_selector.SetSoftTopSpeed(0.1);
-				if (use_acl && (speed_initial < 1.5)) {
+				stationary_yawing = false;
+				if (use_acl && (speed_initial < 0.5)) {
 					bearing_azimuth_degrees = CalculateYawFromPosition(carrot_world_frame);
 					stationary_yawing = true;
 					return;
 				}
-				if (speed_initial < 1.0) {
+				if (speed_initial < 0.5) {
 					bearing_azimuth_degrees = CalculateYawFromPosition(carrot_world_frame);
 					stationary_yawing = true;
 				}
