@@ -358,6 +358,17 @@ private:
 
 			UpdateYaw();
 			quad_goal.yaw = -set_bearing_azimuth_degrees*M_PI/180.0;
+
+			if (stationary_yawing) {
+				quad_goal.xy_mode = acl_fsw::QuadGoal::MODE_VEL;
+				quad_goal.jerk.x = 0;
+				quad_goal.jerk.y = 0;
+				quad_goal.accel.x = 0;
+				quad_goal.accel.y = 0;
+				quad_goal.vel.x = 0;
+				quad_goal.vel.y = 0;
+			}
+
 			quad_goal_pub.publish(quad_goal);
 		}
 	}
@@ -375,7 +386,7 @@ private:
 		}	
 	}
 
-
+	bool stationary_yawing = false;
 	void SetYawFromMotion() {
 		MotionLibrary* motion_library_ptr = motion_selector.GetMotionLibraryPtr();
 		if (motion_library_ptr != nullptr) {
@@ -398,10 +409,14 @@ private:
 
 			Vector3 final_position_world = TransformOrthoBodyToWorld(final_position_ortho_body);
 			
+			// if already going slow, and carrot close, then don't yaw (otherwise we spin around and hunt)
 			if (speed_initial < 2.0 && carrot_ortho_body_frame.norm() < 1.0) {
+				stationary_yawing = false;
 				motion_selector.SetSoftTopSpeed(soft_top_speed_max);
 				return;
 			}
+
+
 			if ((final_position_world(0) - pose_global_x)!= 0) {
 				double potential_bearing_azimuth_degrees = CalculateYawFromPosition(final_position_world);
 				double actual_bearing_azimuth_degrees = -pose_global_yaw * 180.0/M_PI;
@@ -413,15 +428,26 @@ private:
 					bearing_error += 360;
 				}
 
-				if (abs(bearing_error) < 60.0)  {
+				// if inside 100 degrees, let it yaw towards
+				if (abs(bearing_error) < 50.0)  {
+					stationary_yawing = false;
 					motion_selector.SetSoftTopSpeed(soft_top_speed_max);
 					bearing_azimuth_degrees = potential_bearing_azimuth_degrees;
 					return;
 				}
+
+				// else, slow down
 				motion_selector.SetSoftTopSpeed(0.1);
-				if (speed_initial < 0.5) {
+				if (use_acl && (speed_initial < 1.5)) {
 					bearing_azimuth_degrees = CalculateYawFromPosition(carrot_world_frame);
+					stationary_yawing = true;
+					return;
 				}
+				if (speed_initial < 1.0) {
+					bearing_azimuth_degrees = CalculateYawFromPosition(carrot_world_frame);
+					stationary_yawing = true;
+				}
+
 			}
 		}
 	}
