@@ -437,7 +437,7 @@ private:
 				// else, slow down
 				motion_selector.SetSoftTopSpeed(0.1);
 				stationary_yawing = false;
-				if (use_acl && (speed_initial < 1.5)) {
+				if (use_acl && (speed_initial < 0.5)) {
 					bearing_azimuth_degrees = CalculateYawFromPosition(carrot_world_frame);
 					stationary_yawing = true;
 					return;
