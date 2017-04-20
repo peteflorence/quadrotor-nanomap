@@ -347,9 +347,13 @@ private:
 				quad_goal.pos.z = pos(2);
 				quad_goal.vel.z = vel(2);
 			} else {
-				double dolphin_altitude = DolphinStrokeDetermineAltitude(speed);
+				double vel = 0;
+				double accel = 0;
+				double dolphin_altitude = DolphinStrokeDetermineAltitude(speed, vel, accel);
 				carrot_world_frame(2) = dolphin_altitude; 
 				quad_goal.pos.z = dolphin_altitude;
+				quad_goal.vel.z = vel;
+				quad_goal.accel.z = accel;
 			}
 
 			UpdateYaw();
@@ -505,7 +509,9 @@ private:
 		PublishOrthoBodyTransform(roll, pitch);
 		UpdateCarrotOrthoBodyFrame();
 
-		double dolphin_altitude = DolphinStrokeDetermineAltitude(speed);
+		double vel = 0.0;
+		double accel = 0.0;
+		double dolphin_altitude = DolphinStrokeDetermineAltitude(speed, vel, accel);
 		if (!use_3d_library) {
 			carrot_world_frame(2) = dolphin_altitude; 
 			attitude_generator.setZsetpoint(dolphin_altitude);
@@ -784,7 +790,7 @@ private:
     size_t cooldown_hit_threshold = 20;
     bool in_cooldown = false;
 
-	double DolphinStrokeDetermineAltitude(double speed) {
+	double DolphinStrokeDetermineAltitude(double speed, double &vel, double &accel) {
 		if (!dolphin_initialized) {
 			dolphin_initialized = true;
 			time_of_start_dolphin_stroke = ros::Time::now().toSec();
@@ -818,6 +824,8 @@ private:
 			}
 			double time_since_start_dolphin = time_now - time_of_start_dolphin_stroke;
 			dolphin_offset = A_dolphin * sin(time_since_start_dolphin * 2 * M_PI / T_dolphin);
+			vel = A_dolphin * cos(time_since_start_dolphin * 2 * M_PI/T_dolphin) * 2 * M_PI / T_dolphin;
+			accel = A_dolphin * -sin(time_since_start_dolphin * 2 * M_PI/T_dolphin) * 4 * M_PI * M_PI / (T_dolphin * T_dolphin);
 
 		}
 		else {
