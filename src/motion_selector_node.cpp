@@ -352,8 +352,8 @@ private:
 				double dolphin_altitude = DolphinStrokeDetermineAltitude(speed, vel, accel);
 				carrot_world_frame(2) = dolphin_altitude; 
 				quad_goal.pos.z = dolphin_altitude;
-				//quad_goal.vel.z = vel;
-				//quad_goal.accel.z = accel;
+				quad_goal.vel.z = vel;
+				quad_goal.accel.z = accel;
 			}
 
 			UpdateYaw();
