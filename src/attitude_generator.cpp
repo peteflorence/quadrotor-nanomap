@@ -17,7 +17,7 @@ void AttitudeGenerator::setZvelocity(double z_velocity) {
 	this->z_velocity = z_velocity;
 };
 
-Vector3 AttitudeGenerator::generateDesiredAttitudeThrust(Vector3 const& desired_acceleration) {
+Vector3 AttitudeGenerator::generateDesiredAttitudeThrust(Vector3 const& desired_acceleration, double forward_propagation_time) {
 	double a_x = desired_acceleration(0);
 	double a_y = desired_acceleration(1);
 	double a_z = desired_acceleration(2) + 9.8;
@@ -33,10 +33,14 @@ Vector3 AttitudeGenerator::generateDesiredAttitudeThrust(Vector3 const& desired_
 	if (roll > thresh) {roll = thresh;}; if (roll < -thresh) {roll = -thresh;};
 	if (pitch > thresh) {pitch = thresh;}; if (pitch < -thresh) {pitch = -thresh;};
 
-	double thrust = zPID();
+	double thrust = zPID(forward_propagation_time);
 
 	return Vector3(roll, pitch, thrust);
 };
+
+void AttitudeGenerator::setOffset(double offest) {
+	_offset = offest;
+}
 
 void AttitudeGenerator::setGains(Vector3 const& pid, double const& offset) {
   if( fabs(pid(1) - _Ki) > 1e-6 ) _integral = 0.0;
@@ -46,10 +50,13 @@ void AttitudeGenerator::setGains(Vector3 const& pid, double const& offset) {
 	_offset = offset;
 }
 
-double AttitudeGenerator::zPID() {
+double AttitudeGenerator::zPID(double forward_propagation_time) {
 
 	// Proportional term
-	double error = z_setpoint - z;
+	if (forward_propagation_time < 0) {forward_propagation_time = 0;}
+	if (forward_propagation_time > 0.2) {forward_propagation_time = 0;}
+	double z_propagated = z + z_velocity*forward_propagation_time;
+	double error = z_setpoint - z_propagated;
 	double Pout = _Kp * error;
 
 	// Integral term

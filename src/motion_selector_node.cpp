@@ -8,8 +8,10 @@
 #include <nav_msgs/OccupancyGrid.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <sensor_msgs/CameraInfo.h>
+#include <sensor_msgs/Range.h>
 #include <std_msgs/Float64.h>
 #include "fla_msgs/ProcessStatus.h"
+#include "fla_msgs/FlightCommand.h"
 
 #include "tf/tf.h"
 #include <tf/transform_listener.h>
@@ -24,15 +26,17 @@
 #include "pcl_ros/transforms.h"
 #include "pcl_ros/impl/transforms.hpp"
 
-#include <mutex>
 #include <cmath>
 #include <time.h>
 #include <stdlib.h>
 #include <chrono>
 
+#include "acl_fsw/QuadGoal.h"
+
 #include "motion_selector.h"
 #include "attitude_generator.h"
 #include "motion_visualizer.h"
+#include "nanomap/nanomap_visualizer.h"
 
 #include "fla_utils/param_utils.h"
 
@@ -41,12 +45,13 @@ public:
 
 	MotionSelectorNode() : nh("~") {
 
-
 		// Initialization
 		double acceleration_interpolation_min;
 		double soft_top_speed;
         double speed_at_acceleration_max;
         double acceleration_interpolation_max;
+        double offset;
+        int N_depth_image_history;
 
 		fla_utils::SafeGetParam(nh, "soft_top_speed", soft_top_speed);
 		fla_utils::SafeGetParam(nh, "acceleration_interpolation_min", acceleration_interpolation_min);
@@ -56,46 +61,47 @@ public:
         fla_utils::SafeGetParam(nh, "acceleration_interpolation_max", acceleration_interpolation_max);
         fla_utils::SafeGetParam(nh, "flight_altitude", flight_altitude);
         fla_utils::SafeGetParam(nh, "use_3d_library", use_3d_library);
+        fla_utils::SafeGetParam(nh, "use_acl", use_acl);
         fla_utils::SafeGetParam(nh, "max_e_stop_pitch_degrees", max_e_stop_pitch_degrees);
         fla_utils::SafeGetParam(nh, "laser_z_below_project_up", laser_z_below_project_up);
         fla_utils::SafeGetParam(nh, "A_dolphin", A_dolphin);
         fla_utils::SafeGetParam(nh, "T_dolphin", T_dolphin);
+        fla_utils::SafeGetParam(nh, "use_lidar_lite_z", use_lidar_lite_z);
+        fla_utils::SafeGetParam(nh, "thrust_offset", offset);
+        fla_utils::SafeGetParam(nh, "N_depth_image_history", N_depth_image_history);
 
 		this->soft_top_speed_max = soft_top_speed;
 
 		motion_selector.InitializeLibrary(use_3d_library, final_time, soft_top_speed, acceleration_interpolation_min, speed_at_acceleration_max, acceleration_interpolation_max);
 		motion_selector.SetNominalFlightAltitude(flight_altitude);
 		attitude_generator.setZsetpoint(flight_altitude);
+		attitude_generator.setOffset(offset);
+		DepthImageCollisionEvaluator* depth_image_collision_ptr = motion_selector.GetDepthImageCollisionEvaluatorPtr();
+		if (depth_image_collision_ptr != nullptr) {
+			depth_image_collision_ptr->nanomap.SetNumDepthImageHistory(N_depth_image_history);
+		}
 
 		motion_visualizer.initialize(&motion_selector, nh, &best_traj_index, final_time);
+		nanomap_visualizer.Initialize(nh);
 		tf_listener_ = std::make_shared<tf2_ros::TransformListener>(tf_buffer_);
-	    for(;;){
-		    try {
-
-		      tf_buffer_.lookupTransform("world", "body", 
-		                                    ros::Time(0), ros::Duration(30.0));
-		    } catch (tf2::TransformException &ex) {
-		      continue;
-		    }
-
-		    break;
-		}
+	    WaitForTransforms("world", "body");
+		last_pose_update = ros::Time::now();
 		PublishOrthoBodyTransform(0.0, 0.0); // initializes ortho_body transform to be with 0, 0 roll, pitch
-		srand ( time(NULL) ); //initialize the random seed
+
 
 		// Subscribers
-
-		pose_sub = nh.subscribe("pose_topic", 1, &MotionSelectorNode::OnPose, this);
-		velocity_sub = nh.subscribe("twist_topic", 1, &MotionSelectorNode::OnVelocity, this);
+		pose_sub = nh.subscribe("pose_topic", 100, &MotionSelectorNode::OnPose, this);
+		velocity_sub = nh.subscribe("twist_topic", 100, &MotionSelectorNode::OnVelocity, this);
         
 		camera_info_sub = nh.subscribe("depth_camera_info_topic", 1, &MotionSelectorNode::OnCameraInfo, this);
 		depth_image_sub = nh.subscribe("depth_camera_pointcloud_topic", 1, &MotionSelectorNode::OnDepthImage, this);
         
         max_speed_sub = nh.subscribe("/max_speed", 1, &MotionSelectorNode::OnMaxSpeed, this);
 		local_goal_sub = nh.subscribe("local_goal_topic", 1, &MotionSelectorNode::OnLocalGoal, this);
-		//value_grid_sub = nh.subscribe("/value_grid", 1, &MotionSelectorNode::OnValueGrid, this);
 		laser_scan_sub = nh.subscribe("laser_scan_topic", 1, &MotionSelectorNode::OnScan, this);
-
+		smoothed_pose_sub = nh.subscribe("/samros/keyposes", 100, &MotionSelectorNode::OnSmoothedPoses, this);
+		height_above_ground_sub = nh.subscribe("/lidarlite_filter/height_above_ground", 1, &MotionSelectorNode::OnLidarlite, this);
+		command_sub = nh.subscribe("/flight/command", 1, &MotionSelectorNode::OnCommand, this);
 
 		// Publishers
 		carrot_pub = nh.advertise<visualization_msgs::Marker>( "carrot_marker_topic", 0 );
@@ -103,6 +109,19 @@ public:
 		attitude_thrust_pub = nh.advertise<mavros_msgs::AttitudeTarget>("attitude_setpoint_topic", 1);
 		attitude_setpoint_visualization_pub = nh.advertise<geometry_msgs::PoseStamped>("setpoint_visualization_topic", 1);
 		status_pub = nh.advertise<fla_msgs::ProcessStatus>("status_topic", 0);
+		quad_goal_pub = nh.advertise<acl_fsw::QuadGoal>("/FLA_ACL02/goal", 1);
+ 	}
+
+ 	void WaitForTransforms(std::string first, std::string second) {
+ 		for(;;){
+		    try {
+		      tf_buffer_.lookupTransform(first, second, 
+		                                    ros::Time(0), ros::Duration(30.0));
+		    } catch (tf2::TransformException &ex) {
+		      continue;
+		    }
+		    break;
+		}
  	}
 
 	void OnMaxSpeed(const std_msgs::Float64 msg) {
@@ -164,13 +183,8 @@ public:
 		}
 
 		auto t1 = std::chrono::high_resolution_clock::now();
-		mutex.lock();
 		motion_selector.computeBestEuclideanMotion(carrot_ortho_body_frame, best_traj_index, desired_acceleration);
-		// geometry_msgs::TransformStamped tf = GetTransformToWorld();
-		// motion_selector.computeBestDijkstraMotion(carrot_ortho_body_frame, carrot_world_frame, tf, best_traj_index, desired_acceleration);
-	    mutex.unlock();
 		
-		mutex.lock();
       	std::vector<double> collision_probabilities = motion_selector.getCollisionProbabilities();
       	std::vector<double> hokuyo_collision_probabilities = motion_selector.getHokuyoCollisionProbabilities();
 		motion_visualizer.setCollisionProbabilities(collision_probabilities);
@@ -180,9 +194,12 @@ public:
 	    else if (yaw_on) {
 	    	SetYawFromMotion();
 	    } 
-	    mutex.unlock();
+	    // auto t2 = std::chrono::high_resolution_clock::now();
+	    // std::cout << "ReactToSampledPointCloud took "
+     //  		<< std::chrono::duration_cast<std::chrono::microseconds>(t2-t1).count()
+     //  		<< " microseconds\n";
 
-		PublishCurrentAttitudeSetpoint();
+		if (!use_acl){PublishCurrentAttitudeSetpoint();}
 	}
 
 	void ExecuteEStop() {
@@ -222,7 +239,6 @@ public:
 			return;
 		}
 
-		mutex.lock();
 		MotionLibrary* motion_library_ptr = motion_selector.GetMotionLibraryPtr();
 		if (motion_library_ptr != nullptr) {
 
@@ -257,25 +273,23 @@ public:
 			} 
 
 		}
-		mutex.unlock();
 	}
 
 	void PublishCurrentAttitudeSetpoint() {
-		mutex.lock();
-		if (use_3d_library) {
-			AltitudeFeedbackOnBestMotion();
-		}
-		Vector3 attitude_thrust_desired = attitude_generator.generateDesiredAttitudeThrust(desired_acceleration);
+		double forward_propagation_time = ros::Time::now().toSec() - last_pose_update.toSec();
+		Vector3 attitude_thrust_desired = attitude_generator.generateDesiredAttitudeThrust(desired_acceleration, forward_propagation_time);
 		SetThrustForLibrary(attitude_thrust_desired(2));
-		mutex.unlock();
-		PublishAttitudeSetpoint(attitude_thrust_desired);
+
+		if (use_acl){PassToOuterLoop(desired_acceleration);}
+		else if (use_3d_library){AltitudeFeedbackOnBestMotion();}
+		if (!use_acl){PublishAttitudeSetpoint(attitude_thrust_desired);}
 	}
 
 	void AltitudeFeedbackOnBestMotion() {
 		MotionLibrary* motion_library_ptr = motion_selector.GetMotionLibraryPtr();
 		if (motion_library_ptr != nullptr) {
 				Motion best_motion = motion_library_ptr->getMotionFromIndex(best_traj_index);
-				Vector3 best_motion_position_ortho_body =  best_motion.getPosition(0.5);
+				Vector3 best_motion_position_ortho_body =  best_motion.getPosition(1.0);
 				Vector3 best_motion_position_world = TransformOrthoBodyToWorld(best_motion_position_ortho_body);
 				double new_z_setpoint = best_motion_position_world(2);
 				attitude_generator.setZsetpoint(new_z_setpoint);
@@ -287,14 +301,90 @@ public:
 	}
 
 	void drawAll() {
-		mutex.lock();
 		motion_visualizer.drawAll();
-		mutex.unlock();
+		if (false) { // turns off nanomap visualization
+			return;
+		}
+		DepthImageCollisionEvaluator* depth_image_collision_ptr = motion_selector.GetDepthImageCollisionEvaluatorPtr();
+		if (depth_image_collision_ptr != nullptr) {
+			std::vector<Matrix4> edges = depth_image_collision_ptr->nanomap.GetCurrentEdges();
+			nanomap_visualizer.DrawFrustums(edges);
+		}
 	}
 
 private:
 
+	void PassToOuterLoop(Vector3 desired_acceleration_setpoint) {
+		if (!motion_primitives_live) {return;}
 
+		MotionLibrary* motion_library_ptr = motion_selector.GetMotionLibraryPtr();
+		if (motion_library_ptr != nullptr) {
+
+			Motion best_motion = motion_library_ptr->getMotionFromIndex(best_traj_index);
+
+			// build up QuadGoal
+			acl_fsw::QuadGoal quad_goal;
+			quad_goal.cut_power = false;
+			quad_goal.xy_mode = acl_fsw::QuadGoal::MODE_ACCEL;
+			quad_goal.z_mode = acl_fsw::QuadGoal::MODE_POS;
+
+			Vector3 pos = TransformOrthoBodyToWorld(best_motion.getPosition(0.5));
+			Vector3 vel = RotateOrthoBodyToWorld(best_motion.getVelocity(0.5));
+			Vector3 accel = RotateOrthoBodyToWorld(best_motion.getAcceleration());
+			Vector3 jerk = RotateOrthoBodyToWorld(best_motion.getJerk());
+				
+			quad_goal.jerk.x = jerk(0);
+			quad_goal.jerk.y = jerk(1);
+			quad_goal.jerk.z = jerk(2);
+			quad_goal.accel.x = accel(0);
+			quad_goal.accel.y = accel(1);
+			quad_goal.accel.z = accel(2);
+			//quad_goal.vel.x = vel(0);
+			//quad_goal.vel.y = vel(1);
+			//quad_goal.pos.x = pos(0);
+			//quad_goal.pos.y = pos(1);
+			if (use_3d_library) {
+				quad_goal.pos.z = pos(2);
+				quad_goal.vel.z = vel(2);
+			} else {
+				double vel = 0;
+				double accel = 0;
+				double dolphin_altitude = DolphinStrokeDetermineAltitude(speed, vel, accel);
+				carrot_world_frame(2) = dolphin_altitude; 
+				quad_goal.pos.z = dolphin_altitude;
+				quad_goal.vel.z = vel;
+				quad_goal.accel.z = accel;
+			}
+
+			UpdateYaw();
+			quad_goal.yaw = -set_bearing_azimuth_degrees*M_PI/180.0;
+
+			if (stationary_yawing) {
+				quad_goal.xy_mode = acl_fsw::QuadGoal::MODE_VEL;
+				quad_goal.jerk.x = 0;
+				quad_goal.jerk.y = 0;
+				quad_goal.vel.x = 0;
+				quad_goal.vel.y = 0;
+			}
+
+			quad_goal_pub.publish(quad_goal);
+		}
+	}
+
+	bool motion_primitives_live = false;
+	void OnCommand(const fla_msgs::FlightCommand& msg)  {
+	   if (msg.command == fla_msgs::FlightCommand::CMD_GO){
+	        ROS_INFO("GOT GO COMMAND");
+			motion_primitives_live = true;
+
+			ROS_INFO("Starting");	
+		}
+		else{
+			motion_primitives_live = false;
+		}	
+	}
+
+	bool stationary_yawing = false;
 	void SetYawFromMotion() {
 		MotionLibrary* motion_library_ptr = motion_selector.GetMotionLibraryPtr();
 		if (motion_library_ptr != nullptr) {
@@ -317,10 +407,14 @@ private:
 
 			Vector3 final_position_world = TransformOrthoBodyToWorld(final_position_ortho_body);
 			
+			// if already going slow, and carrot close, then don't yaw (otherwise we spin around and hunt)
 			if (speed_initial < 2.0 && carrot_ortho_body_frame.norm() < 1.0) {
+				stationary_yawing = false;
 				motion_selector.SetSoftTopSpeed(soft_top_speed_max);
 				return;
 			}
+
+
 			if ((final_position_world(0) - pose_global_x)!= 0) {
 				double potential_bearing_azimuth_degrees = CalculateYawFromPosition(final_position_world);
 				double actual_bearing_azimuth_degrees = -pose_global_yaw * 180.0/M_PI;
@@ -332,15 +426,27 @@ private:
 					bearing_error += 360;
 				}
 
-				if (abs(bearing_error) < 60.0)  {
+				// if inside 100 degrees, let it yaw towards
+				if (abs(bearing_error) < 50.0)  {
+					stationary_yawing = false;
 					motion_selector.SetSoftTopSpeed(soft_top_speed_max);
 					bearing_azimuth_degrees = potential_bearing_azimuth_degrees;
 					return;
 				}
+
+				// else, slow down
 				motion_selector.SetSoftTopSpeed(0.1);
+				stationary_yawing = false;
+				if (use_acl && (speed_initial < 0.5)) {
+					bearing_azimuth_degrees = CalculateYawFromPosition(carrot_world_frame);
+					stationary_yawing = true;
+					return;
+				}
 				if (speed_initial < 0.5) {
 					bearing_azimuth_degrees = CalculateYawFromPosition(carrot_world_frame);
+					stationary_yawing = true;
 				}
+
 			}
 		}
 	}
@@ -349,18 +455,6 @@ private:
 		return 180.0/M_PI*atan2(-(final_position(1) - pose_global_y), final_position(0) - pose_global_x);	
 	}
 	
-
-	void SetGoalFromBearing() {
-		bool go;
-		nh.param("go", go, false);
-		if (go) {
-			carrot_ortho_body_frame << 100, 0, 0;
-		}
-		else if (carrot_ortho_body_frame(0) == 100) {
-			carrot_ortho_body_frame << 5, 0, 0;
-		}
-	}
-
 	void UpdateMotionLibraryRollPitch(double roll, double pitch) {
 		MotionLibrary* motion_library_ptr = motion_selector.GetMotionLibraryPtr();
 		if (motion_library_ptr != nullptr) {
@@ -410,40 +504,62 @@ private:
 		attitude_generator.UpdateRollPitch(roll, pitch);
 	}
 
-	void UpdateLaserRDFFramesFromPose() {
-		transformAccelerationsIntoLaserRDFFrames();
-		MotionLibrary* motion_library_ptr = motion_selector.GetMotionLibraryPtr();
-    	if (motion_library_ptr != nullptr) {
-    		Vector3 initial_acceleration = motion_library_ptr->getInitialAcceleration();
-			motion_library_ptr->setInitialAccelerationLASER(transformOrthoBodyIntoLaserFrame(initial_acceleration));
-			motion_library_ptr->setInitialAccelerationRDF(transformOrthoBodyIntoRDFFrame(initial_acceleration));
+	void OnLidarlite(sensor_msgs::Range const& msg) {
+		if (use_lidar_lite_z) {
+			attitude_generator.setZ(msg.range);
 		}
 	}
 
-
+	ros::Time last_pose_update;
 	void OnPose( geometry_msgs::PoseStamped const& pose ) {
+
+		if ((ros::Time::now() - last_point_cloud_received).toSec() > 0.1) {
+			ReactToSampledPointCloud();
+		}
+		motion_selector.UpdateCurrentAltitude(pose.pose.position.z);
 		//ROS_INFO("GOT POSE");
-		attitude_generator.setZ(pose.pose.position.z);
+
 		
+
 		tf::Quaternion q(pose.pose.orientation.x, pose.pose.orientation.y, pose.pose.orientation.z, pose.pose.orientation.w);
 		double roll, pitch, yaw;
 		tf::Matrix3x3(q).getRPY(roll, pitch, yaw);
 
-		mutex.lock();
+		if (!use_lidar_lite_z) {
+			attitude_generator.setZ(pose.pose.position.z);
+		}
+		last_pose_update = pose.header.stamp;
 		UpdateMotionLibraryRollPitch(roll, pitch);
 		UpdateAttitudeGeneratorRollPitch(roll, pitch);
 		PublishOrthoBodyTransform(roll, pitch);
 		UpdateCarrotOrthoBodyFrame();
-		UpdateLaserRDFFramesFromPose();
-		mutex.unlock();
+
+		double vel = 0.0;
+		double accel = 0.0;
+		double dolphin_altitude = DolphinStrokeDetermineAltitude(speed, vel, accel);
+		if (!use_3d_library) {
+			carrot_world_frame(2) = dolphin_altitude; 
+			attitude_generator.setZsetpoint(dolphin_altitude);
+		}
 
 		ComputeBestAccelerationMotion();
-
-		mutex.lock();
 		SetPose(pose.pose.position.x, pose.pose.position.y, pose.pose.position.z, yaw);
-		mutex.unlock();
-
 		PublishHealthStatus();
+
+		Eigen::Quaterniond quat(pose.pose.orientation.w, pose.pose.orientation.x, pose.pose.orientation.y, pose.pose.orientation.z);
+		Vector3 pos = Vector3(pose.pose.position.x, pose.pose.position.y, pose.pose.position.z);
+		NanoMapTime nm_time(pose.header.stamp.sec, pose.header.stamp.nsec);
+		NanoMapPose nm_pose(pos, quat, nm_time);
+
+		Matrix4 transform = Eigen::Matrix4d::Identity();
+		transform.block<3,3>(0,0) = nm_pose.quaternion.toRotationMatrix();
+		transform.block<3,1>(0,3) = nm_pose.position;
+		nanomap_visualizer.SetLastPose(transform);
+
+		DepthImageCollisionEvaluator* depth_image_collision_ptr = motion_selector.GetDepthImageCollisionEvaluatorPtr();
+		if (depth_image_collision_ptr != nullptr) {
+			depth_image_collision_ptr->nanomap.AddPose(nm_pose);
+		}
 	}
 
 	void PublishHealthStatus() {
@@ -469,45 +585,6 @@ private:
 		pose_global_y = y;
 		pose_global_z = z;
 		pose_global_yaw = yaw;
-	}
-
-	void transformAccelerationsIntoLaserRDFFrames() {
-		MotionLibrary* motion_library_ptr = motion_selector.GetMotionLibraryPtr();
-		if (motion_library_ptr != nullptr) {
-
-			std::vector<Motion>::iterator motion_iterator_begin = motion_library_ptr->GetMotionNonConstIteratorBegin();
-	  		std::vector<Motion>::iterator motion_iterator_end = motion_library_ptr->GetMotionNonConstIteratorEnd();
-
-	  		Vector3 acceleration_ortho_body;
-			Vector3 acceleration_laser_frame;
-			Vector3 acceleration_rdf_frame;
-
-
-	  		for (auto motion = motion_iterator_begin; motion != motion_iterator_end; motion++) {
-	  			acceleration_ortho_body = motion->getAcceleration();
-
-	  			acceleration_laser_frame = transformOrthoBodyIntoLaserFrame(acceleration_ortho_body);
-	  			motion->setAccelerationLASER(acceleration_laser_frame);
-
-	  			acceleration_rdf_frame = transformOrthoBodyIntoRDFFrame(acceleration_ortho_body);
-	  			motion->setAccelerationRDF(acceleration_rdf_frame);
-	  		} 
-	  	}
-	}
-
-	Vector3 transformOrthoBodyIntoLaserFrame(Vector3 const& ortho_body_vector) {
-		geometry_msgs::TransformStamped tf;
-    	try {
-     		tf = tf_buffer_.lookupTransform("laser", "ortho_body", 
-                                    ros::Time(0), ros::Duration(1/30.0));
-   		} catch (tf2::TransformException &ex) {
-     	 	ROS_ERROR("ID 3 %s", ex.what());
-      	return Vector3(0,0,0);
-    	}
-    	geometry_msgs::PoseStamped pose_ortho_body_vector = PoseFromVector3(ortho_body_vector, "ortho_body");
-    	geometry_msgs::PoseStamped pose_vector_laser_frame = PoseFromVector3(Vector3(0,0,0), "laser");
-    	tf2::doTransform(pose_ortho_body_vector, pose_vector_laser_frame, tf);
-    	return VectorFromPose(pose_vector_laser_frame);
 	}
 
 	Vector3 transformOrthoBodyIntoRDFFrame(Vector3 const& ortho_body_vector) {
@@ -545,6 +622,24 @@ private:
 	    return R;
 	}
 
+	Matrix3 GetBodyToRDFRotationMatrix() {
+		geometry_msgs::TransformStamped tf;
+		if (!got_camera_info) {
+			std::cout << "hadn't got camera info yet" << std::endl;
+			return Matrix3();
+		}
+    	try {
+     		tf = tf_buffer_.lookupTransform(depth_sensor_frame, "body", 
+                                    ros::Time(0), ros::Duration(1/30.0));
+   		} catch (tf2::TransformException &ex) {
+     	 	ROS_ERROR("ID 5 %s", ex.what());
+      	return Matrix3();
+    	}
+    	Eigen::Quaternion<Scalar> quat(tf.transform.rotation.w, tf.transform.rotation.x, tf.transform.rotation.y, tf.transform.rotation.z);
+	    Matrix3 R = quat.toRotationMatrix();
+	    return R;
+	}
+
 	Vector3 TransformWorldToOrthoBody(Vector3 const& world_frame) {
 		geometry_msgs::TransformStamped tf;
 	    try {
@@ -560,12 +655,25 @@ private:
 	    return R*world_frame;
 	}
 
+	Vector3 RotateOrthoBodyToWorld(Vector3 const& ortho_body_frame) {
+		geometry_msgs::TransformStamped tf;
+	    try {
+	      tf = tf_buffer_.lookupTransform("world", "ortho_body", 
+	                                    ros::Time(0), ros::Duration(1/30.0));
+	    } catch (tf2::TransformException &ex) {
+	      ROS_ERROR("ID 6 %s", ex.what());
+	      return Vector3(1,1,1);
+	    }
+
+	    Eigen::Quaternion<Scalar> quat(tf.transform.rotation.w, tf.transform.rotation.x, tf.transform.rotation.y, tf.transform.rotation.z);
+	    Matrix3 R = quat.toRotationMatrix();
+	    return R*ortho_body_frame;
+	}
+
 	void UpdateMotionLibraryVelocity(Vector3 const& velocity_ortho_body_frame) {
 		MotionLibrary* motion_library_ptr = motion_selector.GetMotionLibraryPtr();
 		if (motion_library_ptr != nullptr) {
 			motion_library_ptr->setInitialVelocity(velocity_ortho_body_frame);
-			motion_library_ptr->setInitialVelocityLASER(transformOrthoBodyIntoLaserFrame(velocity_ortho_body_frame));
-			motion_library_ptr->setInitialVelocityRDF(transformOrthoBodyIntoRDFFrame(velocity_ortho_body_frame));
 		}
 	}
 
@@ -574,13 +682,38 @@ private:
 		attitude_generator.setZvelocity(twist.twist.linear.z);
 		Vector3 velocity_world_frame(twist.twist.linear.x, twist.twist.linear.y, twist.twist.linear.z);
 		Vector3 velocity_ortho_body_frame = TransformWorldToOrthoBody(velocity_world_frame);
-		velocity_ortho_body_frame(2) = 0.0;  // WARNING for 2D only
-		mutex.lock();
+		if (!use_3d_library || !use_acl) {
+			velocity_ortho_body_frame(2) = 0.0;  // WARNING for 2D only
+		}
 		UpdateMotionLibraryVelocity(velocity_ortho_body_frame);
 		speed = velocity_ortho_body_frame.norm();
+		MonitorProgress();
 		//UpdateTimeHorizon(speed);
 		UpdateMaxAcceleration(speed);
-		mutex.unlock();
+	}
+
+	ros::Time time_last_made_progress;
+	bool progress_initialized = false; 
+	bool making_progress;
+	double progress_timer = 3.0;
+	double velocity_progress_threshold = 0.5;
+	double yaw_progress_threshold = 30.0;
+	void MonitorProgress() {
+		if (!progress_initialized) {
+			time_last_made_progress = ros::Time::now();
+			progress_initialized = true;
+		}
+		if (speed > velocity_progress_threshold) {
+			time_last_made_progress = ros::Time::now();
+		}
+		double actual_bearing_azimuth_degrees = -pose_global_yaw * 180.0/M_PI;
+		double actual_bearing_error = bearing_azimuth_degrees - actual_bearing_azimuth_degrees;
+		if (abs(actual_bearing_error) > yaw_progress_threshold) {
+			time_last_made_progress = ros::Time::now();
+		}
+		if ((ros::Time::now() - time_last_made_progress).toSec() > progress_timer) {
+			//std::cout << "NOT MAKING PROGRESS" << std::endl;
+		}
 	}
 
 	void UpdateMaxAcceleration(double speed) {
@@ -615,6 +748,7 @@ private:
 	    geometry_msgs::PoseStamped pose_ortho_body_vector = PoseFromVector3(ortho_body_frame, "ortho_body");
     	geometry_msgs::PoseStamped pose_vector_world_frame = PoseFromVector3(Vector3(0,0,0), "world");
     	tf2::doTransform(pose_ortho_body_vector, pose_vector_world_frame, tf);
+
     	return VectorFromPose(pose_vector_world_frame);
 	}
 
@@ -631,88 +765,57 @@ private:
 
 
 	void OnScan(sensor_msgs::PointCloud2ConstPtr const& laser_point_cloud_msg) {
-		//ROS_INFO("GOT SCAN");
 		DepthImageCollisionEvaluator* depth_image_collision_ptr = motion_selector.GetDepthImageCollisionEvaluatorPtr();
-
 		if (depth_image_collision_ptr != nullptr) {
-
-			//sensor_msgs::PointCloud2ConstPtr laser_point_cloud_msg_ptr(laser_point_cloud_msg);
-			
 			pcl::PointCloud<pcl::PointXYZ>::Ptr ortho_body_cloud(new pcl::PointCloud<pcl::PointXYZ>);
 		    TransformToOrthoBodyPointCloud("laser", laser_point_cloud_msg, ortho_body_cloud);
-
 		    if (!use_3d_library) {
 		     	ProjectOrthoBodyLaserPointCloud(ortho_body_cloud);
 		    }
-
 			depth_image_collision_ptr->UpdateLaserPointCloudPtr(ortho_body_cloud);
 		}
 	}
 
-	void UpdateValueGrid(nav_msgs::OccupancyGrid value_grid_msg) {
-		auto t1 = std::chrono::high_resolution_clock::now();
+	void OnSmoothedPoses(nav_msgs::Path path) {
+		DepthImageCollisionEvaluator* depth_image_collision_ptr = motion_selector.GetDepthImageCollisionEvaluatorPtr();
+		if (depth_image_collision_ptr != nullptr) {
+			std::vector<NanoMapPose> smoothed_path_vector;
 
-		ValueGridEvaluator* value_grid_evaluator_ptr = motion_selector.GetValueGridEvaluatorPtr();
-		if (value_grid_evaluator_ptr != nullptr) {
-			ValueGrid* value_grid_ptr = value_grid_evaluator_ptr->GetValueGridPtr();
-			if (value_grid_ptr != nullptr) {
-
-				value_grid_ptr->SetResolution(value_grid_msg.info.resolution);
-				value_grid_ptr->SetSize(value_grid_msg.info.width, value_grid_msg.info.height);
-				value_grid_ptr->SetOrigin(value_grid_msg.info.origin.position.x, value_grid_msg.info.origin.position.y);
-				value_grid_ptr->SetValues(value_grid_msg.data);
-
-				//motion_selector.PassInUpdatedValueGrid(&value_grid);
-				auto t2 = std::chrono::high_resolution_clock::now();
-				std::cout << "Whole value grid construction took "
-		      		<< std::chrono::duration_cast<std::chrono::microseconds>(t2-t1).count()
-		      		<< " microseconds\n";
-
-				std::cout << value_grid_ptr->GetValueOfPosition(carrot_world_frame) << " is value of goal" << std::endl;
-				std::cout << value_grid_ptr->GetValueOfPosition(Vector3(0,0,0)) << " is value of world origin" << std::endl;
-				std::cout << value_grid_ptr->GetValueOfPosition(Vector3(0,-2.0,0)) << " is value of 1.5 to my right" << std::endl;
+			size_t path_size = path.poses.size();
+			for (size_t i = 0; i < path_size; i++) {
+				geometry_msgs::PoseStamped pose = path.poses.at(i);
+				Eigen::Quaterniond quat(pose.pose.orientation.w, pose.pose.orientation.x, pose.pose.orientation.y, pose.pose.orientation.z);
+				Vector3 pos = Vector3(pose.pose.position.x, pose.pose.position.y, pose.pose.position.z);
+				NanoMapTime nm_time(pose.header.stamp.sec, pose.header.stamp.nsec);
+				NanoMapPose nm_pose(pos, quat, nm_time);
+				smoothed_path_vector.push_back(nm_pose);
 			}
-		}
+
+			depth_image_collision_ptr->nanomap.AddPoseUpdates(smoothed_path_vector);
+		}	
 	}
 
-	void OnValueGrid(nav_msgs::OccupancyGrid value_grid_msg) {
-		ROS_INFO("GOT VALUE GRID");
-		UpdateValueGrid(value_grid_msg);
-	}
 
 	// Hack function to add motion up/down in order to help state estimator
 	// dolphin_altitude(t) = A * cos(t * 2pi/T) + flight_altitude
 	// A = amplitude
 	// T = period
-        double A_dolphin = 0.5;
-        double T_dolphin = 3.0;
-        double dolphin_acceleration_threshold = 2.0;
-        double cooldown_duration = 3.0;
+    double A_dolphin = 0.5;
+    double T_dolphin = 3.0;
+    double dolphin_acceleration_threshold = 2.0;
+    double cooldown_duration = 3.0;
 
-        double time_of_last_dolphin_query = 0;
-        bool dolphin_initialized = false;
-        double time_of_start_cooldown = 0;
+    double time_of_last_dolphin_query = 0;
+    bool dolphin_initialized = false;
+    double time_of_start_cooldown = 0;
 
-        double dolphin_offset = 0.0;
+    double dolphin_offset = 0.0;
 
-        size_t cooldown_hit_counter = 0;
-        size_t cooldown_hit_threshold = 20;
-        bool in_cooldown = false;
+    size_t cooldown_hit_counter = 0;
+    size_t cooldown_hit_threshold = 20;
+    bool in_cooldown = false;
 
-
-    // John-style Dolphin
-
-    // if aggressive action chosen
-    // dolphin cooldown timer = 0
-
-    //if timer > dolphin_cooldown_time 
-    	//dolphin_offset = sin(t)
-    //else
-    	//dolphin_offset *= 0.95;
-    	//reset dolphin phase 
-
-
-	double DolphinStrokeDetermineAltitude(double speed) {
+	double DolphinStrokeDetermineAltitude(double speed, double &vel, double &accel) {
 		if (!dolphin_initialized) {
 			dolphin_initialized = true;
 			time_of_start_dolphin_stroke = ros::Time::now().toSec();
@@ -746,6 +849,8 @@ private:
 			}
 			double time_since_start_dolphin = time_now - time_of_start_dolphin_stroke;
 			dolphin_offset = A_dolphin * sin(time_since_start_dolphin * 2 * M_PI / T_dolphin);
+			vel = A_dolphin * cos(time_since_start_dolphin * 2 * M_PI/T_dolphin) * 2 * M_PI / T_dolphin;
+			accel = A_dolphin * -sin(time_since_start_dolphin * 2 * M_PI/T_dolphin) * 4 * M_PI * M_PI / (T_dolphin * T_dolphin);
 
 		}
 		else {
@@ -765,18 +870,11 @@ private:
 	}
 
 
-	void OnLocalGoal(geometry_msgs::PoseStamped const& local_goal) {
-		//ROS_INFO("GOT LOCAL GOAL");
-		mutex.lock();
-		double dolphin_altitude = DolphinStrokeDetermineAltitude(speed);
-		carrot_world_frame << local_goal.pose.position.x, local_goal.pose.position.y, dolphin_altitude; 
-		if (!use_3d_library) {
-			attitude_generator.setZsetpoint(dolphin_altitude);
-		}
-
+	void OnLocalGoal(geometry_msgs::PoseStamped const& local_goal) {		
+		carrot_world_frame(0) = local_goal.pose.position.x; 
+		carrot_world_frame(1) = local_goal.pose.position.y;
+		carrot_world_frame(2) = local_goal.pose.position.z;
 		UpdateCarrotOrthoBodyFrame();
-		mutex.unlock();
-
 		visualization_msgs::Marker marker;
 		marker.header.frame_id = "ortho_body";
 		marker.header.stamp = ros::Time::now();
@@ -784,15 +882,13 @@ private:
 		marker.id = 1;
 		marker.type = visualization_msgs::Marker::SPHERE;
 		marker.action = visualization_msgs::Marker::ADD;
-		mutex.lock();
 		marker.pose.position.x = carrot_ortho_body_frame(0);
 		marker.pose.position.y = carrot_ortho_body_frame(1);
 		marker.pose.position.z = carrot_ortho_body_frame(2);
-		mutex.unlock();
 		marker.scale.x = 0.5;
 		marker.scale.y = 0.5;
 		marker.scale.z = 0.5;
-		marker.color.a = 0.5; // Don't forget to set the alpha!
+		marker.color.a = 0.5;
 		marker.color.r = 0.9;
 		marker.color.g = 0.4;
 		marker.color.b = 0.0;
@@ -801,19 +897,16 @@ private:
 
 	void TransformToOrthoBodyPointCloud(std::string const& source_frame, const sensor_msgs::PointCloud2ConstPtr msg, pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud_out){
 	  	sensor_msgs::PointCloud2 msg_out;
-
 	  	geometry_msgs::TransformStamped tf;
     	try {
 	     	tf = tf_buffer_.lookupTransform("ortho_body", source_frame,
-	                                    ros::Time(0), ros::Duration(1/30.0));
+						ros::Time(0), ros::Duration(1/30.0));
 	   		} catch (tf2::TransformException &ex) {
 	     	 	ROS_ERROR("8 %s", ex.what());
       	return;
     	}
-
 	  	Eigen::Quaternionf quat(tf.transform.rotation.w, tf.transform.rotation.x, tf.transform.rotation.y, tf.transform.rotation.z);
 	    Eigen::Matrix3f R = quat.toRotationMatrix();
-
 	    Eigen::Vector4f T = Eigen::Vector4f(tf.transform.translation.x,tf.transform.translation.y,tf.transform.translation.z, 1.0); 
 
      	Eigen::Matrix4f transform_eigen; // Your Transformation Matrix
@@ -831,41 +924,31 @@ private:
 		cloud_out = cloud;
 	}
 
+	ros::Time last_point_cloud_received;
 	void OnDepthImage(const sensor_msgs::PointCloud2ConstPtr& point_cloud_msg) {
-		// ROS_INFO("GOT POINT CLOUD");
 		if (UseDepthImage()) {
+			last_point_cloud_received = ros::Time::now();
 			DepthImageCollisionEvaluator* depth_image_collision_ptr = motion_selector.GetDepthImageCollisionEvaluatorPtr();
-
 			if (depth_image_collision_ptr != nullptr) {
-
 		    	Matrix3 R = GetOrthoBodyToRDFRotationMatrix();
-
-		    	mutex.lock();
+		    	Matrix3 R_set = GetBodyToRDFRotationMatrix();
+				depth_image_collision_ptr->nanomap.SetBodyToRdf(R_set);
 				depth_image_collision_ptr->UpdateRotationMatrix(R);
+				depth_image_collision_ptr->UpdateBodyToRdf(R_set);
 				if(use_depth_image) {
-					pcl::PointCloud<pcl::PointXYZ>::Ptr ortho_body_cloud(new pcl::PointCloud<pcl::PointXYZ>);
-		    		TransformToOrthoBodyPointCloud(depth_sensor_frame, point_cloud_msg, ortho_body_cloud);
-					depth_image_collision_ptr->UpdatePointCloudPtr(ortho_body_cloud);
+					pcl::PCLPointCloud2 cloud2_rdf;
+					pcl_conversions::toPCL(*point_cloud_msg, cloud2_rdf);
+					pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_rdf(new pcl::PointCloud<pcl::PointXYZ>);
+					pcl::fromPCLPointCloud2(cloud2_rdf,*cloud_rdf);
+					NanoMapTime nm_time(point_cloud_msg->header.stamp.sec, point_cloud_msg->header.stamp.nsec);
+					depth_image_collision_ptr->nanomap.AddPointCloud(cloud_rdf, nm_time, point_cloud_msg->header.seq);
 				}
-				mutex.unlock();
 			}
 			ReactToSampledPointCloud();
 		}
 	}
 
-	void PublishAttitudeSetpoint(Vector3 const& roll_pitch_thrust) { 
-
-		using namespace Eigen;
-
-		mavros_msgs::AttitudeTarget setpoint_msg;
-		setpoint_msg.header.stamp = ros::Time::now();
-		setpoint_msg.type_mask = mavros_msgs::AttitudeTarget::IGNORE_ROLL_RATE 
-			| mavros_msgs::AttitudeTarget::IGNORE_PITCH_RATE
-			| mavros_msgs::AttitudeTarget::IGNORE_YAW_RATE
-			;
-		
-		mutex.lock();
-
+	void UpdateYaw() {
 		// // Limit size of bearing errors
 		double bearing_error_cap = 30;
 		double actual_bearing_azimuth_degrees = -pose_global_yaw * 180.0/M_PI;
@@ -908,14 +991,26 @@ private:
 		if (set_bearing_azimuth_degrees < -180.0) {
 			set_bearing_azimuth_degrees += 360.0;
 		}
+	}
+
+	void PublishAttitudeSetpoint(Vector3 const& roll_pitch_thrust) { 
+
+		using namespace Eigen;
+
+		mavros_msgs::AttitudeTarget setpoint_msg;
+		setpoint_msg.header.stamp = ros::Time::now();
+		setpoint_msg.type_mask = mavros_msgs::AttitudeTarget::IGNORE_ROLL_RATE 
+			| mavros_msgs::AttitudeTarget::IGNORE_PITCH_RATE
+			| mavros_msgs::AttitudeTarget::IGNORE_YAW_RATE
+			;
+
+		UpdateYaw();
 
 		Matrix3f m;
 		m =AngleAxisf(-set_bearing_azimuth_degrees*M_PI/180.0, Vector3f::UnitZ())
 		* AngleAxisf(roll_pitch_thrust(1), Vector3f::UnitY())
 		* AngleAxisf(-roll_pitch_thrust(0), Vector3f::UnitX());
-
-		mutex.unlock();
-
+		
 		Quaternionf q(m);
 
 		setpoint_msg.orientation.w = q.w();
@@ -932,18 +1027,21 @@ private:
 	ros::Subscriber camera_info_sub;
 	ros::Subscriber pose_sub;
 	ros::Subscriber velocity_sub;
+	ros::Subscriber height_above_ground_sub;
 	ros::Subscriber depth_image_sub;
 	ros::Subscriber global_goal_sub;
 	ros::Subscriber local_goal_sub;
-	ros::Subscriber value_grid_sub;
 	ros::Subscriber laser_scan_sub;
 	ros::Subscriber max_speed_sub;
+	ros::Subscriber smoothed_pose_sub;
+	ros::Subscriber command_sub;
 
 	ros::Publisher carrot_pub;
 	ros::Publisher gaussian_pub;
 	ros::Publisher attitude_thrust_pub;
 	ros::Publisher attitude_setpoint_visualization_pub;
 	ros::Publisher status_pub;
+	ros::Publisher quad_goal_pub;
 
 	std::string depth_sensor_frame = "depth_sensor";
 
@@ -961,7 +1059,6 @@ private:
 
 	Eigen::Vector4d pose_x_y_z_yaw;
 
-	std::mutex mutex;
 
 	Vector3 carrot_world_frame;
 	Vector3 carrot_ortho_body_frame = Vector3(0,0,0);
@@ -971,6 +1068,7 @@ private:
 
 	MotionSelector motion_selector;
 	AttitudeGenerator attitude_generator;
+	NanoMapVisualizer nanomap_visualizer;
 
 	double pose_global_x = 0;
 	double pose_global_y = 0;
@@ -980,7 +1078,9 @@ private:
 	bool yaw_on = false;
 	double soft_top_speed_max = 0.0;
 	bool use_depth_image = true;
+	bool use_lidar_lite_z = false;
 	bool use_3d_library = false;
+	bool use_acl = true;
 	double flight_altitude = 1.0;
 
 	bool executing_e_stop = false;

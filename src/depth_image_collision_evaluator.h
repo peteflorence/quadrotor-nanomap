@@ -1,7 +1,7 @@
 #include "motion.h"
 #include "kd_tree.h"
 
-#include "nanoflann.hpp"
+#include "nanomap/nanomap.h"
 
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl/point_cloud.h>
@@ -25,6 +25,7 @@ public:
   void UpdatePointCloudPtr(pcl::PointCloud<pcl::PointXYZ>::Ptr const& xyz_cloud_new);
   void UpdateLaserPointCloudPtr(pcl::PointCloud<pcl::PointXYZ>::Ptr const& xyz_cloud_new);
   void UpdateRotationMatrix(Matrix3 const R);
+  void UpdateBodyToRdf(Matrix3 const& R);
 
   bool computeDeterministicCollisionOnePositionKDTree(Vector3 const& robot_position);
 
@@ -33,13 +34,16 @@ public:
   double IsOutsideFOV(Vector3 robot_position);
   double AddOutsideFOVPenalty(Vector3 robot_position, double probability_of_collision);
   
-  double computeProbabilityOfCollisionNPositionsKDTree_DepthImage(Vector3 const& robot_position, Vector3 const& sigma_robot_position);
+  double computeProbabilityOfCollisionNPositionsKDTree_DepthImage(Vector3 const& robot_position, Vector3 const& sigma_robot_position, bool early_exit);
   double computeProbabilityOfCollisionNPositionsKDTree_Laser(Vector3 const& robot_position, Vector3 const& sigma_robot_position);
-  double computeProbabilityOfCollisionNPositionsKDTree(Vector3 const& robot_position, Vector3 const& sigma_robot_position, std::vector<pcl::PointXYZ> const& closest_pts);
+  double computeProbabilityOfCollisionNPositionsKDTree(Vector3 const& robot_position, Vector3 const& sigma_robot_position, std::vector<pcl::PointXYZ> const& closest_pts, double interpolation_radius);
 
   void setCameraInfo(double bin, double width, double height, Matrix3 K_camera_info);
 
+  NanoMap nanomap;
+
 private:
+
   pcl::PointCloud<pcl::PointXYZ>::Ptr xyz_cloud_ptr;
   pcl::PointCloud<pcl::PointXYZ>::Ptr xyz_laser_cloud_ptr;
 
@@ -54,10 +58,13 @@ private:
   KDTree<double> my_kd_tree_laser;
 
   Matrix3 R; //rotation matrix from ortho_body frame into camera rdf frame
+  Matrix3 R_body_to_rdf;
+  Matrix3 R_body_to_rdf_inverse;
 
-  double p_collision_behind = 0.1;
-  double p_collision_left_right_fov = 0.1;
-  double p_collision_up_down_fov = 0.0;
+  double p_collision_behind = 0.5;
+  double p_collision_left_right_fov = 0.5;
+  double p_collision_up_down_fov = 0.5;
   double p_collision_occluded = 0.999;
+  double p_collision_beyond = 0.5;
 
 };

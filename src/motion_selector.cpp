@@ -82,7 +82,6 @@ size_t MotionSelector::getNumMotions() {
 void MotionSelector::computeBestEuclideanMotion(Vector3 const& carrot_body_frame, size_t &best_traj_index, Vector3 &desired_acceleration) {
   EvaluateCollisionProbabilities();
 
-
   EvaluateGoalProgress(carrot_body_frame); 
   EvaluateTerminalVelocityCost();
   if (use_3d_library) {EvaluateAltitudeCost();};
@@ -235,17 +234,21 @@ void MotionSelector::EvaluateTerminalVelocityCost() {
   }
 };
 
+void MotionSelector::UpdateCurrentAltitude(double current_altitude_set) {
+  current_altitude = current_altitude_set;
+}
+
 void MotionSelector::EvaluateAltitudeCost() {
   std::vector<Motion>::const_iterator motion_iterator_begin = motion_library.GetMotionIteratorBegin();
   std::vector<Motion>::const_iterator motion_iterator_end = motion_library.GetMotionIteratorEnd();
   size_t i = 0;
-  double minimum_altitude = 0.7;
+  double minimum_altitude = 0.5;
   double maximum_altitude = 5.0;
   double final_altitude;
   for (auto motion = motion_iterator_begin; motion != motion_iterator_end; motion++) {
-    final_altitude = motion->getPosition(0.1)(2);
+    final_altitude = motion->getPosition(0.5)(2) + current_altitude;
     altitude_evaluations.at(i) = 0;
-    altitude_evaluations.at(i) -= 0.1 * (nominal_altitude - final_altitude) * (nominal_altitude - final_altitude);
+    altitude_evaluations.at(i) -= 0.2 * (nominal_altitude - final_altitude) * (nominal_altitude - final_altitude);
     if (final_altitude < minimum_altitude) {
       altitude_evaluations.at(i) -= 10.0*(final_altitude - minimum_altitude)*(final_altitude - minimum_altitude);
     }
@@ -263,7 +266,7 @@ void MotionSelector::EvaluateCollisionProbabilities() {
   for (auto motion = motion_iterator_begin; motion != motion_iterator_end; motion++) {
     double collision_probability = 0;
     double hokuyo_collision_probability = 0;
-    computeProbabilityOfCollisionOneMotion(*motion, collision_probability, hokuyo_collision_probability);
+    computeProbabilityOfCollisionOneMotion(*motion, collision_probability, hokuyo_collision_probability, (i==-1));
     collision_probabilities.at(i) = collision_probability;
     hokuyo_collision_probabilities.at(i) = hokuyo_collision_probability;
     no_collision_probabilities.at(i) = 1.0 - collision_probabilities.at(i); 
@@ -271,50 +274,33 @@ void MotionSelector::EvaluateCollisionProbabilities() {
   }
 };
 
-void MotionSelector::computeProbabilityOfCollisionOneMotion(Motion motion, double &collision_probability, double &hokuyo_collision_probability) {
+void MotionSelector::computeProbabilityOfCollisionOneMotion(Motion motion, double &collision_probability, double &hokuyo_collision_probability, bool print) {
   double probability_no_collision = 1;
   double probability_no_collision_hokuyo = 1;
 
   double probability_no_collision_one_step = 1.0;
   double probability_of_collision_one_step_one_depth = 1.0;
   Vector3 robot_position;
-  Vector3 robot_position_rdf;
   Vector3 sigma_robot_position;
   double k = 0.2;
 
-  for (size_t time_step_index = 0; time_step_index < num_samples_collision; time_step_index++) {
+  bool early_exit = false;
 
+  for (size_t time_step_index = 0; time_step_index < num_samples_collision; time_step_index++) {
     sigma_robot_position = 0.1*motion_library.getSigmaAtTime(collision_sampling_time_vector(time_step_index))*(1 + k*motion.getVelocity(collision_sampling_time_vector(time_step_index)).norm()); 
     robot_position = motion.getPosition(collision_sampling_time_vector(time_step_index));
     probability_no_collision_one_step = 1 - depth_image_collision_evaluator.computeProbabilityOfCollisionNPositionsKDTree_Laser(robot_position, sigma_robot_position);
     probability_no_collision_hokuyo = probability_no_collision_hokuyo * probability_no_collision_one_step;
-
-    robot_position_rdf = motion.getPositionRDF(collision_sampling_time_vector(time_step_index));
-    
-    probability_of_collision_one_step_one_depth = depth_image_collision_evaluator.computeProbabilityOfCollisionNPositionsKDTree_DepthImage(robot_position, sigma_robot_position);
-    probability_of_collision_one_step_one_depth = depth_image_collision_evaluator.AddOutsideFOVPenalty(robot_position_rdf, probability_of_collision_one_step_one_depth);
+    probability_of_collision_one_step_one_depth = depth_image_collision_evaluator.computeProbabilityOfCollisionNPositionsKDTree_DepthImage(robot_position, sigma_robot_position, early_exit);
 
     probability_no_collision_one_step = probability_no_collision_one_step * (1 - probability_of_collision_one_step_one_depth);
-    probability_no_collision = probability_no_collision * probability_no_collision_one_step;    
+    probability_no_collision = probability_no_collision * probability_no_collision_one_step;
+    if (probability_no_collision < 0.1) { // early exit
+      early_exit = true;
+    }
   }
   collision_probability = 1.0 - probability_no_collision;
   hokuyo_collision_probability = 1.0 - probability_no_collision_hokuyo;
-};
-
-double MotionSelector::computeProbabilityOfCollisionOneMotion_MonteCarlo(Motion motion, std::vector<Vector3> sampled_initial_velocities, size_t n) { 
-  Vector3 robot_position;
-  size_t collision_count = 0;
-  for (size_t i = 0; i < n; i++) {
-    for (size_t time_step_index = 0; time_step_index < num_samples_collision; time_step_index++) {
-      robot_position = motion.getPositionRDF_MonteCarlo(collision_sampling_time_vector(time_step_index), sampled_initial_velocities[i]);
-      
-      if (depth_image_collision_evaluator.computeDeterministicCollisionOnePositionKDTree(robot_position)) {
-        collision_count++;
-        break;
-      }
-    }
-  }
-  return (collision_count*1.0)/(n*1.0);
 };
 
 Eigen::Matrix<Scalar, Eigen::Dynamic, 3> MotionSelector::sampleMotionForDrawing(size_t motion_index, Eigen::Matrix<Scalar, Eigen::Dynamic, 1> sampling_time_vector, size_t num_samples) {

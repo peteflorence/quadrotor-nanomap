@@ -4,9 +4,13 @@ acceleration_interpolation_max: 7.5  # m/s^2
 speed_at_acceleration_max: 10.0 # m/s
 yaw_on: true
 use_depth_image: true
-flight_altitude: 1.5 # m
+flight_altitude: 2.5 # m
+use_acl: true
 use_3d_library: false
 max_e_stop_pitch_degrees: 45.0
 laser_z_below_project_up: -0.5 # m
 A_dolphin: 0.4 # m
 T_dolphin: 3.0 # s
+use_lidar_lite_z: false
+thrust_offset: 0.605 ## 0.75 for 5S ## 0.605 for 6S
+N_depth_image_history: 150
