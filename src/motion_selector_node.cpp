@@ -51,6 +51,7 @@ public:
         double speed_at_acceleration_max;
         double acceleration_interpolation_max;
         double offset;
+        double sensor_range;
         int N_depth_image_history;
 
 		fla_utils::SafeGetParam(nh, "soft_top_speed", soft_top_speed);
@@ -64,6 +65,7 @@ public:
         fla_utils::SafeGetParam(nh, "use_acl", use_acl);
         fla_utils::SafeGetParam(nh, "max_e_stop_pitch_degrees", max_e_stop_pitch_degrees);
         fla_utils::SafeGetParam(nh, "laser_z_below_project_up", laser_z_below_project_up);
+        fla_utils::SafeGetParam(nh, "sensor_range", sensor_range);
         fla_utils::SafeGetParam(nh, "A_dolphin", A_dolphin);
         fla_utils::SafeGetParam(nh, "T_dolphin", T_dolphin);
         fla_utils::SafeGetParam(nh, "use_lidar_lite_z", use_lidar_lite_z);
@@ -79,6 +81,7 @@ public:
 		DepthImageCollisionEvaluator* depth_image_collision_ptr = motion_selector.GetDepthImageCollisionEvaluatorPtr();
 		if (depth_image_collision_ptr != nullptr) {
 			depth_image_collision_ptr->nanomap.SetNumDepthImageHistory(N_depth_image_history);
+			depth_image_collision_ptr->nanomap.SetSensorRange(sensor_range);
 		}
 
 		motion_visualizer.initialize(&motion_selector, nh, &best_traj_index, final_time);
